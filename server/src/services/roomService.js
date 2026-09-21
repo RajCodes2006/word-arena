@@ -138,6 +138,14 @@ export function removePlayer(roomId, playerId) {
   return room;
 }
 
+export function deleteRoom(roomId) {
+  const room = getRoomRecord(roomId);
+  if (!room) return false;
+
+  if (room.timer) clearTimeout(room.timer);
+  return rooms.delete(room.roomId);
+}
+
 export function electNewHost(room) {
   if (!room) return null;
   const currentHost = findPlayer(room, room.hostId);
