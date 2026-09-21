@@ -1,0 +1,51 @@
+:root {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #f4f4f5;
+  background: #09090b;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; }
+button, input { font: inherit; }
+
+.page-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: radial-gradient(circle at top, #18181b 0%, #09090b 55%);
+}
+
+.hero-card {
+  width: min(760px, 100%);
+  padding: 48px;
+  border: 1px solid #27272a;
+  border-radius: 28px;
+  background: rgba(17, 17, 19, 0.92);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+}
+
+.eyebrow { margin: 0 0 10px; font-size: 12px; font-weight: 800; letter-spacing: 0.18em; color: #a1a1aa; }
+h1 { margin: 0; font-size: clamp(48px, 10vw, 88px); line-height: 0.95; }
+.tagline { color: #a1a1aa; font-size: 18px; margin: 18px 0 32px; }
+.panel { display: grid; gap: 20px; }
+label { display: grid; gap: 8px; color: #d4d4d8; font-size: 14px; font-weight: 600; }
+input { width: 100%; border: 1px solid #3f3f46; border-radius: 12px; padding: 13px 14px; color: #fff; background: #18181b; outline: none; }
+input:focus { border-color: #71717a; }
+.action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.join-box { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+button { border: 1px solid #3f3f46; border-radius: 12px; padding: 13px 16px; color: #fff; background: #27272a; cursor: pointer; }
+button:hover { background: #3f3f46; }
+button.primary { background: #f4f4f5; color: #09090b; border-color: #f4f4f5; font-weight: 800; }
+button.primary:hover { background: #d4d4d8; }
+.room-badge { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; border-radius: 14px; background: #18181b; border: 1px solid #27272a; }
+.room-badge span { color: #a1a1aa; font-size: 13px; }
+.room-badge strong { letter-spacing: 0.12em; }
+.status { margin: 0; color: #d4d4d8; font-size: 14px; }
+
+@media (max-width: 640px) {
+  .hero-card { padding: 28px; }
+  .action-grid { grid-template-columns: 1fr; }
+}
