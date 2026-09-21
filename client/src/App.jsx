@@ -38,6 +38,11 @@ function App() {
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
   const timeoutDraftSent = useRef(0);
+  const leavingRef = useRef(false);
+  const sessionRef = useRef(session);
+  const nameRef = useRef(name);
+  sessionRef.current = session;
+  nameRef.current = name;
 
   const me = room?.players?.find((p) => p.playerId === session?.playerId);
   const isHost = Boolean(me && room?.hostId === me.playerId);
@@ -45,7 +50,19 @@ function App() {
 
   useEffect(() => {
     const setRoomState = (next) => {
+      if (leavingRef.current) return;
+
       setRoom(next);
+      const currentSession = sessionRef.current;
+      const currentPlayer = next.players?.find(
+        (player) => player.playerId === currentSession?.playerId
+      );
+
+      if (currentPlayer) setSubmitted(Boolean(currentPlayer.submitted));
+      if (next.currentLetter) setLetter(next.currentLetter);
+      if (next.currentRound) setRound(next.currentRound);
+      if (next.roundEndsAt) setEndsAt(next.roundEndsAt);
+
       if (next.state === 'WAITING') setScreen('LOBBY');
       if (next.state === 'PLAYING') setScreen('GAME');
       if (next.state === 'RESULTS') setScreen('RESULTS');
@@ -79,7 +96,17 @@ function App() {
       setScreen(final ? 'FINISHED' : 'RESULTS');
     };
     const submittedEvent = () => setSubmitted(true);
-    const error = ({ message }) => { setNotice(message || 'Something went wrong.'); setBusy(false); };
+    const error = ({ message }) => {
+      setNotice(message || 'Something went wrong.');
+      setBusy(false);
+
+      if (!room && saved?.roomId) {
+        sessionStorage.removeItem(SESSION_KEY);
+        setSession(null);
+        setRoom(null);
+        setScreen('HOME');
+      }
+    };
 
     socket.on('room:state', setRoomState);
     socket.on('room:joined', joined);
@@ -89,9 +116,16 @@ function App() {
     socket.on('game:finished', ended);
     socket.on('error_message', error);
 
-    if (saved?.roomId && saved?.playerId) {
-      const rejoin = () => socket.emit('room:join', saved);
-      if (socket.connected) rejoin(); else socket.once('connect', rejoin);
+    const rejoin = () => {
+      const current = sessionRef.current || saved;
+      if (!current?.roomId || !current?.playerId) return;
+      socket.emit('room:join', current);
+    };
+
+    socket.on('connect', rejoin);
+
+    if (saved?.roomId && saved?.playerId && socket.connected) {
+      rejoin();
     }
 
     return () => {
@@ -102,8 +136,9 @@ function App() {
       socket.off('round:ended', ended);
       socket.off('game:finished', ended);
       socket.off('error_message', error);
+      socket.off('connect', rejoin);
     };
-  }, [socket, saved, name]);
+  }, [socket, saved]);
 
   useEffect(() => {
     if (!endsAt) { setSeconds(0); return undefined; }
