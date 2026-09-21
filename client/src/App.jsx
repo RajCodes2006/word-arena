@@ -232,7 +232,7 @@ function App() {
     </header>
 
     {screen === 'LOBBY' && <Lobby room={room} online={online} isHost={isHost} onStart={start} notice={notice} />}
-    {screen === 'GAME' && <Game room={room} letter={letter} seconds={seconds} answers={answers} setAnswers={setAnswers} submitted={submitted} onSubmit={submit} session={session} notice={notice} />}
+    {screen === 'GAME' && <Game room={room} letter={letter} seconds={seconds} answers={answers} updateAnswer={updateAnswer} submitted={submitted} onSubmit={submit} session={session} notice={notice} />}
     {screen === 'RESULTS' && <Results results={results} board={board} isHost={isHost} onNext={nextRound} />}
     {screen === 'FINISHED' && <Finished board={board} onNew={leave} />}
   </div>;
@@ -247,7 +247,7 @@ function Lobby({ room, online, isHost, onStart, notice }) {
   </section><aside className="card side"><p className="card-kicker">MATCH SETTINGS</p><Setting a="Players" b={(room?.maxPlayers || '') + ' max'} /><Setting a="Rounds" b={room?.totalRounds} /><Setting a="Round time" b={(room?.roundSeconds || '') + 's'} /><Setting a="Scoring" b="10 / 5 / 0" /><hr /><button className="primary wide" disabled={!isHost || online.length < 2} onClick={onStart}>{isHost ? 'Start WordWars' : 'Waiting for host'}</button><p className="small muted">Minimum 2 connected players. Maximum 5.</p></aside></main>;
 }
 
-function Game({ room, letter, seconds, answers, setAnswers, submitted, onSubmit, session, notice }) {
+function Game({ room, letter, seconds, answers, updateAnswer, submitted, onSubmit, session, notice }) {
   return <main className="layout"><section className="card panel">
     <div className="row between"><div><p className="eyebrow">YOUR TURN</p><h1>Think fast.</h1></div><div className={'timer ' + (seconds <= 10 ? 'danger' : '')}><b>{String(seconds).padStart(2, '0')}</b><small>SEC</small></div></div>
     <div className="letter"><small>YOUR LETTER</small><strong>{letter || room?.currentLetter || '?'}</strong><p>Every answer must start with this letter.</p></div>
