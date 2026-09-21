@@ -56,7 +56,6 @@ function App() {
       if (currentSession?.roomId && next.roomId !== currentSession.roomId) return;
 
       setRoom(next);
-      const currentSession = sessionRef.current;
       const currentPlayer = next.players?.find(
         (player) => player.playerId === currentSession?.playerId
       );
