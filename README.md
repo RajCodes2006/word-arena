@@ -61,6 +61,8 @@ There is **no database** in this MVP. Active rooms, drafts, submissions, timers,
 
 ## Environment
 
+### Backend
+
 Create `server/.env` locally from `server/.env.example`:
 
 ```env
@@ -71,6 +73,17 @@ GEMINI_MODEL=gemini-3.8-flash
 ```
 
 Keep the real Gemini API key only on the backend. Never expose it through a `VITE_*` variable.
+
+### Frontend
+
+Create `client/.env` locally from `client/.env.example`:
+
+```env
+VITE_API_URL=http://localhost:5000
+VITE_SOCKET_URL=http://localhost:5000
+```
+
+For Vercel, replace both values with the public Render backend URL.
 
 ## Production deployment
 
