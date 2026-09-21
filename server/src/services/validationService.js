@@ -49,11 +49,16 @@ function normalizeValidationPayload(raw, answers, letter) {
       .toLocaleUpperCase()
       .startsWith(letter.toLocaleUpperCase());
 
+    const nameLooksValid =
+      category !== 'name' || looksLikePlausibleName(answer);
+
     output[category] = {
-      valid: Boolean(candidate.valid) && startsCorrectly,
-      reason: startsCorrectly
-        ? String(candidate.reason || 'API_CHECKED').slice(0, 120)
-        : 'WRONG_LETTER'
+      valid: Boolean(candidate.valid) && startsCorrectly && nameLooksValid,
+      reason: !startsCorrectly
+        ? 'WRONG_LETTER'
+        : !nameLooksValid
+          ? 'NOT_A_PLAUSIBLE_NAME'
+          : String(candidate.reason || 'API_CHECKED').slice(0, 120)
     };
   }
 
