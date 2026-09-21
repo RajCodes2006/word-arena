@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoom } from './services/api';
 import { connectSocket } from './services/socket';
 import './styles.css';
@@ -37,6 +37,7 @@ function App() {
   const [board, setBoard] = useState([]);
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
+  const timeoutDraftSent = useRef(0);
 
   const me = room?.players?.find((p) => p.playerId === session?.playerId);
   const isHost = Boolean(me && room?.hostId === me.playerId);
@@ -67,6 +68,7 @@ function App() {
       setAnswers({ name: '', place: '', animal: '', thing: '' });
       setSubmitted(false);
       setResults(null);
+      timeoutDraftSent.current = 0;
       setScreen('GAME');
     };
     const ended = ({ room: next, results: nextResults, leaderboard: nextBoard, final }) => {
@@ -110,6 +112,19 @@ function App() {
     const id = window.setInterval(tick, 250);
     return () => window.clearInterval(id);
   }, [endsAt, offset]);
+
+  useEffect(() => {
+    if (screen !== 'GAME' || seconds !== 0 || submitted || !session || !round) return;
+    if (timeoutDraftSent.current === round) return;
+
+    timeoutDraftSent.current = round;
+    emit('round:draft', {
+      roomId: session.roomId,
+      playerId: session.playerId,
+      round,
+      answers
+    });
+  }, [answers, round, screen, seconds, session, submitted]);
 
   const emit = (event, payload) => {
     if (socket.connected) socket.emit(event, payload);
