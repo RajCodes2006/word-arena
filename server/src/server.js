@@ -36,6 +36,6 @@ app.use('/api/rooms', roomRoutes);
 const io = new Server(server, { cors: corsOptions });
 registerSocketHandlers(io);
 
-server.listen(PORT, () => {
-  console.log(`WordWars server running on http://localhost:${PORT}`);
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`WordWars server listening on port ${PORT}`);
 });
