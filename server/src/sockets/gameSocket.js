@@ -23,6 +23,15 @@ function emitRoom(io, room, event = 'room:state') {
   io.to(room.roomId).emit(event, toPublicRoom(room));
 }
 
+function sanitizeAnswers(answers) {
+  return Object.fromEntries(
+    CATEGORIES.map((category) => [
+      category,
+      normalizeAnswer(answers?.[category]).slice(0, 80)
+    ])
+  );
+}
+
 function startRound(io, room) {
   if (room.timer) clearTimeout(room.timer);
 
@@ -32,6 +41,7 @@ function startRound(io, room) {
   room.state = 'PLAYING';
   room.results = null;
   room.submissions = new Map();
+  room.drafts = new Map();
   room.ending = false;
 
   room.players.forEach((player) => {
@@ -56,7 +66,9 @@ function startRound(io, room) {
       room.state = 'RESULTS';
       room.roundEndsAt = null;
       room.ending = false;
-      io.to(room.roomId).emit('error_message', { message: 'The round ended with a server error.' });
+      io.to(room.roomId).emit('error_message', {
+        message: 'The round ended with a server error.'
+      });
       emitRoom(io, room);
     });
   }, room.roundSeconds * 1000 + 100);
@@ -69,6 +81,14 @@ async function finishRound(io, room) {
   if (room.timer) clearTimeout(room.timer);
   room.timer = null;
 
+  // A player may type answers without pressing "Lock My Answers".
+  // Drafts are kept on the server and become the submission at timeout.
+  const effectiveSubmissions = new Map(room.drafts);
+  for (const [playerId, answers] of room.submissions.entries()) {
+    effectiveSubmissions.set(playerId, answers);
+  }
+  room.submissions = effectiveSubmissions;
+
   const { validations, mode } = await validateAllSubmissions({
     letter: room.currentLetter,
     submissions: room.submissions
@@ -80,7 +100,9 @@ async function finishRound(io, room) {
     validations
   });
 
-  const resultById = new Map(roundResults.map((result) => [result.playerId, result]));
+  const resultById = new Map(
+    roundResults.map((result) => [result.playerId, result])
+  );
 
   room.players.forEach((player) => {
     const result = resultById.get(player.playerId);
@@ -95,9 +117,11 @@ async function finishRound(io, room) {
     players: roundResults
   };
 
-  room.state = room.currentRound >= room.totalRounds ? 'FINISHED' : 'RESULTS';
+  room.state =
+    room.currentRound >= room.totalRounds ? 'FINISHED' : 'RESULTS';
   room.roundEndsAt = null;
   room.ending = false;
+  room.drafts = new Map();
 
   const payload = {
     room: toPublicRoom(room),
@@ -114,18 +138,24 @@ export function registerSocketHandlers(io) {
   io.on('connection', (socket) => {
     socket.on('room:join', ({ roomId, playerId, displayName }) => {
       const room = getRoomRecord(roomId);
-      if (!room) return socket.emit('error_message', { message: 'Room not found.' });
+      if (!room) {
+        return socket.emit('error_message', { message: 'Room not found.' });
+      }
 
       const existing = findPlayer(room, playerId);
       if (room.state !== 'WAITING' && !existing) {
-        return socket.emit('error_message', { message: 'This game has already started.' });
+        return socket.emit('error_message', {
+          message: 'This game has already started.'
+        });
       }
 
       const result = existing
         ? { ok: true, player: existing }
         : addPlayer(room.roomId, { playerId, displayName });
 
-      if (!result.ok) return socket.emit('error_message', { message: result.error });
+      if (!result.ok) {
+        return socket.emit('error_message', { message: result.error });
+      }
 
       attachPlayer(room.roomId, result.player.playerId, socket.id);
       socket.join(room.roomId);
@@ -142,28 +172,51 @@ export function registerSocketHandlers(io) {
       const host = room && findPlayer(room, playerId);
 
       if (!room || !host || room.hostId !== playerId) {
-        return socket.emit('error_message', { message: 'Only the host can start the game.' });
+        return socket.emit('error_message', {
+          message: 'Only the host can start the game.'
+        });
       }
 
       const connectedPlayers = getConnectedPlayers(room);
       if (connectedPlayers.length < 2) {
-        return socket.emit('error_message', { message: 'At least 2 connected players are required.' });
+        return socket.emit('error_message', {
+          message: 'At least 2 connected players are required.'
+        });
       }
 
       if (room.state !== 'WAITING') {
-        return socket.emit('error_message', { message: 'This game has already started.' });
+        return socket.emit('error_message', {
+          message: 'This game has already started.'
+        });
       }
 
       startRound(io, room);
+    });
+
+    socket.on('round:draft', ({ roomId, playerId, round, answers }) => {
+      const room = getRoomRecord(roomId);
+      const player = room && findPlayer(room, playerId);
+
+      if (!room || !player || room.state !== 'PLAYING') return;
+      if (round !== room.currentRound || room.submissions.has(playerId)) return;
+      if (room.roundEndsAt && Date.now() >= room.roundEndsAt) return;
+
+      room.drafts.set(playerId, sanitizeAnswers(answers));
     });
 
     socket.on('round:submit', async ({ roomId, playerId, round, answers }) => {
       const room = getRoomRecord(roomId);
       const player = room && findPlayer(room, playerId);
 
-      if (!room || !player) return socket.emit('error_message', { message: 'Player or room not found.' });
+      if (!room || !player) {
+        return socket.emit('error_message', {
+          message: 'Player or room not found.'
+        });
+      }
       if (room.state !== 'PLAYING' || round !== room.currentRound) {
-        return socket.emit('error_message', { message: 'This round is no longer accepting answers.' });
+        return socket.emit('error_message', {
+          message: 'This round is no longer accepting answers.'
+        });
       }
 
       if (room.roundEndsAt && Date.now() >= room.roundEndsAt) {
@@ -172,19 +225,24 @@ export function registerSocketHandlers(io) {
       }
 
       if (room.submissions.has(playerId)) {
-        return socket.emit('error_message', { message: 'You already submitted this round.' });
+        return socket.emit('error_message', {
+          message: 'You already submitted this round.'
+        });
       }
 
-      const sanitized = Object.fromEntries(
-        CATEGORIES.map((category) => [category, normalizeAnswer(answers?.[category]).slice(0, 80)])
-      );
-
+      const sanitized = sanitizeAnswers(answers);
+      room.drafts.set(playerId, sanitized);
       room.submissions.set(playerId, sanitized);
       player.submitted = true;
+
       socket.emit('round:submitted', { playerId });
       emitRoom(io, room);
 
-      if (getConnectedPlayers(room).every((entry) => room.submissions.has(entry.playerId))) {
+      if (
+        getConnectedPlayers(room).every((entry) =>
+          room.submissions.has(entry.playerId)
+        )
+      ) {
         await finishRound(io, room);
       }
     });
@@ -192,9 +250,13 @@ export function registerSocketHandlers(io) {
     socket.on('round:next', ({ roomId, playerId }) => {
       const room = getRoomRecord(roomId);
       if (!room || room.hostId !== playerId) return;
+
       if (room.state !== 'RESULTS') {
-        return socket.emit('error_message', { message: 'The round is not ready to advance.' });
+        return socket.emit('error_message', {
+          message: 'The round is not ready to advance.'
+        });
       }
+
       startRound(io, room);
     });
 
@@ -218,6 +280,7 @@ export function registerSocketHandlers(io) {
     socket.on('disconnect', () => {
       const match = detachPlayer(socket.id);
       if (!match) return;
+
       const { room, player } = match;
       if (room.hostId === player.playerId) electNewHost(room);
       emitRoom(io, room);
