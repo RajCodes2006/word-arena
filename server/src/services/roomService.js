@@ -43,6 +43,7 @@ export function createRoomRecord({
       }
     ],
     submissions: new Map(),
+    drafts: new Map(),
     results: null,
     timer: null,
     ending: false
@@ -131,6 +132,7 @@ export function removePlayer(roomId, playerId) {
 
   room.players = room.players.filter((player) => player.playerId !== playerId);
   room.submissions.delete(playerId);
+  room.drafts.delete(playerId);
   return room;
 }
 
