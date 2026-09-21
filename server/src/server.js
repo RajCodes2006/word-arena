@@ -11,7 +11,7 @@ const server = http.createServer(app);
 const PORT = Number(process.env.PORT || 5000);
 const clientOrigins = String(process.env.CLIENT_ORIGIN || 'http://localhost:5173')
   .split(',')
-  .map((origin) => origin.trim())
+  .map((origin) => origin.trim().replace(/\/+$/, ''))
   .filter(Boolean);
 
 const corsOptions = {
