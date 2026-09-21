@@ -162,7 +162,13 @@ export function registerSocketHandlers(io) {
 
       socket.emit('room:joined', {
         room: toPublicRoom(room),
-        playerId: result.player.playerId
+        playerId: result.player.playerId,
+        results: room.results,
+        leaderboard: leaderboard(room.players),
+        round: room.currentRound,
+        letter: room.currentLetter,
+        roundEndsAt: room.roundEndsAt,
+        serverNow: Date.now()
       });
       emitRoom(io, room);
     });
@@ -294,6 +300,16 @@ export function registerSocketHandlers(io) {
       const { room, player } = match;
       if (room.hostId === player.playerId) electNewHost(room);
       emitRoom(io, room);
+
+      if (
+        room.state === 'PLAYING' &&
+        getConnectedPlayers(room).length > 0 &&
+        getConnectedPlayers(room).every((entry) => room.submissions.has(entry.playerId))
+      ) {
+        finishRound(io, room).catch((error) => {
+          console.error('Round finish after disconnect failed:', error);
+        });
+      }
     });
   });
 }
