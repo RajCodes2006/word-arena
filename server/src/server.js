@@ -9,24 +9,31 @@ import { registerSocketHandlers } from './sockets/gameSocket.js';
 const app = express();
 const server = http.createServer(app);
 const PORT = Number(process.env.PORT || 5000);
-const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || 'http://localhost:5173';
+const clientOrigins = String(process.env.CLIENT_ORIGIN || 'http://localhost:5173')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
-app.use(cors({ origin: CLIENT_ORIGIN }));
-app.use(express.json());
+const corsOptions = {
+  origin: clientOrigins,
+  methods: ['GET', 'POST'],
+  credentials: true
+};
+
+app.use(cors(corsOptions));
+app.use(express.json({ limit: '32kb' }));
 
 app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', app: 'WordWars' });
+  res.json({
+    status: 'ok',
+    app: 'WordWars',
+    validation: process.env.GEMINI_API_KEY ? 'gemini-api' : 'basic-fallback'
+  });
 });
 
 app.use('/api/rooms', roomRoutes);
 
-const io = new Server(server, {
-  cors: {
-    origin: CLIENT_ORIGIN,
-    methods: ['GET', 'POST']
-  }
-});
-
+const io = new Server(server, { cors: corsOptions });
 registerSocketHandlers(io);
 
 server.listen(PORT, () => {
