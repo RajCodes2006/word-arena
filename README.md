@@ -15,10 +15,11 @@ Real-time multiplayer Name, Place, Animal, Thing game for 2–5 players.
 - Host-controlled game start
 - Server-generated letters
 - Server-authoritative round timer
-- One submission per player per round
+- One locked submission per player per round
+- Live answer drafts are saved to the server, so answers still count when the timer expires without clicking Lock
 - Name, Place, Animal, Thing answer fields
 - API validation with Gemini when GEMINI_API_KEY is configured
-- Automatic fallback to basic letter validation when the API is unavailable
+- Automatic fallback to a basic letter check when the API is unavailable; name answers also pass a plausibility check so obvious gibberish is not awarded points
 - Duplicate detection and scoring (10 unique / 5 duplicate / 0 invalid)
 - Round results and cumulative leaderboard
 - Host transfer on disconnect
