@@ -1,15 +1,35 @@
 const CATEGORIES = ['name', 'place', 'animal', 'thing'];
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
 
-function localFallback({ answer, letter }) {
+function startsWithLetter(answer, letter) {
   const normalized = String(answer ?? '').trim();
-  const startsCorrectly =
-    normalized.length > 0 &&
+  return normalized.length > 0 &&
     normalized.toLocaleUpperCase().startsWith(letter.toLocaleUpperCase());
+}
+
+function looksLikePlausibleName(answer) {
+  const value = String(answer ?? '').trim();
+  if (value.length < 2 || value.length > 40) return false;
+  if (!/^[A-Za-z]+(?:[ '-][A-Za-z]+)*$/.test(value)) return false;
+
+  const lettersOnly = value.replace(/[^A-Za-z]/g, '').toLowerCase();
+  if (!/[aeiouy]/.test(lettersOnly)) return false;
+  if (/[^aeiouy]{4,}/.test(lettersOnly)) return false;
+  return true;
+}
+
+function localFallback({ category, answer, letter }) {
+  const normalized = String(answer ?? '').trim();
+  if (!normalized) return { valid: false, reason: 'EMPTY' };
+  if (!startsWithLetter(normalized, letter)) return { valid: false, reason: 'WRONG_LETTER' };
+
+  if (category === 'name' && !looksLikePlausibleName(normalized)) {
+    return { valid: false, reason: 'NOT_A_PLAUSIBLE_NAME' };
+  }
 
   return {
-    valid: startsCorrectly,
-    reason: startsCorrectly ? 'BASIC_LETTER_CHECK' : 'WRONG_LETTER'
+    valid: true,
+    reason: category === 'name' ? 'BASIC_NAME_CHECK' : 'BASIC_LETTER_CHECK'
   };
 }
 
@@ -54,7 +74,7 @@ function basicChecks(answers, letter) {
   return Object.fromEntries(
     CATEGORIES.map((category) => [
       category,
-      localFallback({ answer: answers[category], letter })
+      localFallback({ category, answer: answers[category], letter })
     ])
   );
 }
@@ -85,7 +105,7 @@ Required starting letter: "${letter}"
 Judge each answer independently.
 
 Rules:
-- Name: a plausible real human given name or commonly accepted personal name.
+- Name: a plausible real human given name or commonly accepted personal name. Reject random strings, keyboard-smash text, and obvious category mismatches.
 - Place: a real geographic place, such as a city, town, country, state, landmark, river, mountain, region, etc.
 - Animal: a real animal or recognized animal species/common animal name.
 - Thing: a real, recognizable concrete object, item, product, tool, device, food item, or physical thing.
