@@ -6,6 +6,7 @@ import {
   findPlayer,
   getConnectedPlayers,
   getRoomRecord,
+  deleteRoom,
   removePlayer,
   toPublicRoom
 } from '../services/roomService.js';
@@ -284,6 +285,12 @@ export function registerSocketHandlers(io) {
 
       if (room.state === 'WAITING') {
         removePlayer(room.roomId, playerId);
+
+        if (room.players.length === 0) {
+          deleteRoom(room.roomId);
+          socket.leave(room.roomId);
+          return;
+        }
       } else {
         player.connected = false;
         player.socketId = null;
