@@ -296,6 +296,21 @@ export function registerSocketHandlers(io) {
       if (!match) return;
 
       const { room, player } = match;
+
+      // Lobby disconnects free the slot immediately so dead tabs cannot fill a room.
+      if (room.state === 'WAITING') {
+        removePlayer(room.roomId, player.playerId);
+
+        if (room.players.length === 0) {
+          deleteRoom(room.roomId);
+          return;
+        }
+
+        if (room.hostId === player.playerId) electNewHost(room);
+        emitRoom(io, room);
+        return;
+      }
+
       if (room.hostId === player.playerId) electNewHost(room);
       emitRoom(io, room);
 
