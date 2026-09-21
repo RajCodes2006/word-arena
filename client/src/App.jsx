@@ -10,10 +10,10 @@ const CATEGORIES = [
   ['animal', 'Animal'],
   ['thing', 'Thing']
 ];
-const SESSION_KEY = 'wordwars.session.v1';
+const SESSION_KEY = 'wordwars.session.v2';
 
 function loadSession() {
-  try { return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); }
+  try { return JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null'); }
   catch { return null; }
 }
 
@@ -53,7 +53,7 @@ function App() {
     };
     const joined = ({ room: next, playerId }) => {
       const nextSession = { roomId: next.roomId, playerId, displayName: name.trim() || 'Player' };
-      localStorage.setItem(SESSION_KEY, JSON.stringify(nextSession));
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify(nextSession));
       setSession(nextSession);
       setRoom(next);
       setScreen(next.state === 'PLAYING' ? 'GAME' : 'LOBBY');
@@ -137,7 +137,7 @@ function App() {
     try {
       const data = await createRoom({ playerName: name.trim(), ...settings });
       const next = { roomId: data.roomId, playerId: data.playerId, displayName: name.trim() };
-      localStorage.setItem(SESSION_KEY, JSON.stringify(next));
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify(next));
       setSession(next); setRoom(data.room); setRoomCode(data.roomId); setScreen('LOBBY');
       emit('room:join', next);
     } catch (e) { setNotice(e.message); setBusy(false); }
@@ -181,7 +181,7 @@ function App() {
 
   function leave() {
     if (session) emit('room:leave', { roomId: session.roomId, playerId: session.playerId });
-    localStorage.removeItem(SESSION_KEY);
+    sessionStorage.removeItem(SESSION_KEY);
     setSession(null); setRoom(null); setScreen('HOME'); setResults(null); setBoard([]);
     setAnswers({ name: '', place: '', animal: '', thing: '' });
     setLetter(''); setNotice('');
