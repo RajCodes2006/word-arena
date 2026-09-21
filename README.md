@@ -49,6 +49,35 @@ Without a key, WordWars still runs using the basic first-letter check.
 
 Home -> Create/Join Room -> Lobby -> Start -> Timed round -> Submit -> API validation -> Duplicate scoring -> Results -> Next round -> Final leaderboard
 
-## Notes
+## Deployment architecture
 
-The MVP stores active rooms in memory. Restarting the server clears active games. PostgreSQL/Supabase persistence can be added after the core multiplayer flow is stable.
+WordWars MVP uses three services:
+
+- **Vercel:** React + Vite frontend
+- **Render:** Node.js + Express + Socket.IO backend
+- **Gemini API:** server-side answer validation
+
+There is **no database** in this MVP. Active rooms, drafts, submissions, timers, and scores live in server memory. A backend restart clears active games.
+
+## Environment
+
+Create `server/.env` locally from `server/.env.example`:
+
+```env
+PORT=5000
+CLIENT_ORIGIN=http://localhost:5173
+GEMINI_API_KEY=
+GEMINI_MODEL=gemini-3.8-flash
+```
+
+Keep the real Gemini API key only on the backend. Never expose it through a `VITE_*` variable.
+
+## Production deployment
+
+1. Deploy `server/` as a Render web service.
+2. Set `GEMINI_API_KEY`, `GEMINI_MODEL`, and the deployed frontend URL as `CLIENT_ORIGIN`.
+3. Deploy `client/` as a Vercel project.
+4. Set `VITE_API_URL` and `VITE_SOCKET_URL` to the Render backend URL.
+5. Verify `/health`, Socket.IO connections, room creation/joining, multiplayer rounds, reconnection, and Gemini validation.
+
+The current MVP keeps the game state in memory intentionally to keep deployment simple.
