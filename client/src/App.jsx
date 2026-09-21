@@ -140,6 +140,20 @@ function App() {
     emit('room:start', { roomId: session.roomId, playerId: session.playerId });
   }
 
+  function updateAnswer(category, value) {
+    const nextAnswers = { ...answers, [category]: value };
+    setAnswers(nextAnswers);
+
+    if (screen === 'GAME' && room?.state === 'PLAYING' && !submitted && session) {
+      emit('round:draft', {
+        roomId: session.roomId,
+        playerId: session.playerId,
+        round,
+        answers: nextAnswers
+      });
+    }
+  }
+
   function submit() {
     if (submitted || seconds <= 0) return;
     if (!Object.values(answers).some((v) => v.trim())) return setNotice('Enter at least one answer.');
@@ -222,7 +236,7 @@ function Game({ room, letter, seconds, answers, setAnswers, submitted, onSubmit,
   return <main className="layout"><section className="card panel">
     <div className="row between"><div><p className="eyebrow">YOUR TURN</p><h1>Think fast.</h1></div><div className={'timer ' + (seconds <= 10 ? 'danger' : '')}><b>{String(seconds).padStart(2, '0')}</b><small>SEC</small></div></div>
     <div className="letter"><small>YOUR LETTER</small><strong>{letter || room?.currentLetter || '?'}</strong><p>Every answer must start with this letter.</p></div>
-    <div className="answer-grid">{CATEGORIES.map(([key, label]) => <label key={key}>{label}<input value={answers[key]} onChange={e => setAnswers(a => ({ ...a, [key]: e.target.value }))} placeholder={'Enter a ' + label.toLowerCase()} maxLength={80} disabled={submitted || seconds <= 0} autoComplete="off" /></label>)}</div>
+    <div className="answer-grid">{CATEGORIES.map(([key, label]) => <label key={key}>{label}<input value={answers[key]} onChange={e => updateAnswer(key, e.target.value)} placeholder={'Enter a ' + label.toLowerCase()} maxLength={80} disabled={submitted || seconds <= 0} autoComplete="off" /></label>)}</div>
     <div className="submit"><p className="small muted">{submitted ? 'Submitted. Waiting for the round to finish.' : 'Unique valid = 10. Duplicate valid = 5.'}</p><button className="primary" disabled={submitted || seconds <= 0} onClick={onSubmit}>{submitted ? 'Submitted ✓' : 'Lock My Answers'}</button></div>
     {notice && <Notice text={notice} />}
   </section><aside className="card side"><p className="card-kicker">LIVE SCORES</p>{(room?.players || []).slice().sort((a,b) => b.score-a.score).map((p,i) => <div className="score" key={p.playerId}><span>{i+1}</span><b>{p.displayName}{p.playerId === session.playerId ? ' · YOU' : ''}</b><strong>{p.score}</strong><i className={p.connected ? 'online' : ''} /></div>)}<div className="tip"><b>Tip</b><span>Rare valid answers beat obvious duplicates.</span></div></aside></main>;
