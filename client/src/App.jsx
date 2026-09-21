@@ -52,6 +52,9 @@ function App() {
     const setRoomState = (next) => {
       if (leavingRef.current) return;
 
+      const currentSession = sessionRef.current;
+      if (currentSession?.roomId && next.roomId !== currentSession.roomId) return;
+
       setRoom(next);
       const currentSession = sessionRef.current;
       const currentPlayer = next.players?.find(
@@ -76,6 +79,7 @@ function App() {
       round: joinedRound,
       letter: joinedLetter,
       roundEndsAt: joinedEndsAt,
+      draft: joinedDraft,
       serverNow
     }) => {
       const currentSession = sessionRef.current;
@@ -94,6 +98,12 @@ function App() {
       if (serverNow && joinedEndsAt) setOffset(serverNow - Date.now());
       setResults(joinedResults || null);
       setBoard(joinedBoard || []);
+      if (joinedDraft) setAnswers({
+        name: joinedDraft.name || '',
+        place: joinedDraft.place || '',
+        animal: joinedDraft.animal || '',
+        thing: joinedDraft.thing || ''
+      });
       setSubmitted(Boolean(
         next.players?.find((player) => player.playerId === playerId)?.submitted
       ));
@@ -133,7 +143,7 @@ function App() {
       setNotice(message || 'Something went wrong.');
       setBusy(false);
 
-      if (!room && saved?.roomId) {
+      if (saved?.roomId && message === 'Room not found.') {
         sessionStorage.removeItem(SESSION_KEY);
         setSession(null);
         setRoom(null);
