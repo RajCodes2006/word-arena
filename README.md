@@ -1,63 +1,53 @@
 # WordWars
 
-Real-time multiplayer **Name, Place, Animal, Thing** game.
+Real-time multiplayer Name, Place, Animal, Thing game for 2–5 players.
 
-## Starter stack
+## Stack
+- React + Vite
+- Node.js + Express
+- Socket.IO
+- Server-side Gemini API validation
+- In-memory game state for the MVP
 
-- **Frontend:** React + Vite
-- **Backend:** Node.js + Express
-- **Realtime:** Socket.IO
-- **Validation:** API-ready validation service
-- **Storage:** In-memory for MVP (database can be added later)
-
-## Project structure
-
-```text
-WordWars/
-├── client/              # React frontend
-├── server/              # Node/Express + Socket.IO backend
-├── .gitignore
-└── README.md
-```
+## Features
+- Create or join a Room ID
+- 2–5 players per room
+- Host-controlled game start
+- Server-generated letters
+- Server-authoritative round timer
+- One submission per player per round
+- Name, Place, Animal, Thing answer fields
+- API validation with Gemini when GEMINI_API_KEY is configured
+- Automatic fallback to basic letter validation when the API is unavailable
+- Duplicate detection and scoring (10 unique / 5 duplicate / 0 invalid)
+- Round results and cumulative leaderboard
+- Host transfer on disconnect
+- Multiple rounds and final champion screen
 
 ## Run locally
 
-### 1. Start the server
-
-```bash
+Terminal 1:
 cd server
 npm install
 npm run dev
-```
 
-Server runs on `http://localhost:5000`.
-
-### 2. Start the client
-
-Open another terminal:
-
-```bash
+Terminal 2:
 cd client
 npm install
 npm run dev
-```
 
-Vite will show the local frontend URL, normally `http://localhost:5173`.
+Open the Vite URL, normally http://localhost:5173.
 
-## MVP flow
+## API validation
 
-1. Create a room.
-2. Share the room ID.
-3. 4–5 players join.
-4. Host starts the game.
-5. Server generates a letter.
-6. Players enter Name, Place, Animal and Thing.
-7. Players submit before the timer ends.
-8. Server validates answers and calculates scores.
-9. Results and leaderboard are shown.
+Copy server/.env.example to server/.env and add GEMINI_API_KEY. Keep the key on the server; never use a VITE_* variable for it.
 
-## Important
+Without a key, WordWars still runs using the basic first-letter check.
 
-The starter currently uses in-memory room/game state. That is intentional for the first build so we can get multiplayer logic working before adding PostgreSQL/Supabase persistence.
+## Game flow
 
-API validation is isolated in `server/src/services/validationService.js`, so a real validation provider can be plugged in without rewriting the game engine.
+Home -> Create/Join Room -> Lobby -> Start -> Timed round -> Submit -> API validation -> Duplicate scoring -> Results -> Next round -> Final leaderboard
+
+## Notes
+
+The MVP stores active rooms in memory. Restarting the server clears active games. PostgreSQL/Supabase persistence can be added after the core multiplayer flow is stable.
