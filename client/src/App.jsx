@@ -135,6 +135,8 @@ function App() {
       setResults(nextResults);
       setBoard(nextBoard || []);
       setSubmitted(true);
+      setEndsAt(null);
+      setSeconds(0);
       setScreen(final ? 'FINISHED' : 'RESULTS');
     };
     const submittedEvent = () => setSubmitted(true);
@@ -204,8 +206,19 @@ function App() {
   }, [answers, round, screen, seconds, session, submitted]);
 
   const emit = (event, payload) => {
-    if (socket.connected) socket.emit(event, payload);
-    else socket.once('connect', () => socket.emit(event, payload));
+    if (socket.connected) {
+      socket.emit(event, payload);
+      return;
+    }
+
+    // room:join is already handled by the global connect listener.
+    // Connecting here avoids sending the same join twice.
+    if (event === 'room:join') {
+      socket.connect();
+      return;
+    }
+
+    socket.once('connect', () => socket.emit(event, payload));
   };
 
   async function create() {
@@ -215,6 +228,7 @@ function App() {
       const data = await createRoom({ playerName: name.trim(), ...settings });
       const next = { roomId: data.roomId, playerId: data.playerId, displayName: name.trim() };
       leavingRef.current = false;
+      sessionRef.current = next;
       sessionStorage.setItem(SESSION_KEY, JSON.stringify(next));
       setSession(next); setRoom(data.room); setRoomCode(data.roomId); setScreen('LOBBY');
       emit('room:join', next);
@@ -225,6 +239,7 @@ function App() {
     if (!name.trim() || !roomCode.trim()) return setNotice('Enter your name and a Room ID.');
     const next = { roomId: roomCode.trim().toUpperCase(), playerId: crypto.randomUUID(), displayName: name.trim() };
     leavingRef.current = false;
+    sessionRef.current = next;
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(next));
     setSession(next); setBusy(true); setNotice(''); setScreen('LOBBY'); emit('room:join', next);
   }
