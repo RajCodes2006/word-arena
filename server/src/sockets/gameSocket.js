@@ -168,6 +168,7 @@ export function registerSocketHandlers(io) {
         round: room.currentRound,
         letter: room.currentLetter,
         roundEndsAt: room.roundEndsAt,
+        draft: room.drafts.get(result.player.playerId) || room.submissions.get(result.player.playerId) || null,
         serverNow: Date.now()
       });
       emitRoom(io, room);
