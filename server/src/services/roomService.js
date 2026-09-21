@@ -79,8 +79,8 @@ export function addPlayer(roomId, { playerId, displayName }) {
 
   if (!normalizedId) return { ok: false, error: 'Player ID is required.' };
   if (!normalizedName) return { ok: false, error: 'Display name is required.' };
-  if (room.players.length >= room.maxPlayers) return { ok: false, error: 'Room is full.' };
 
+  // A reconnecting player is allowed back even when the room is currently full.
   const existing = findPlayer(room, normalizedId);
   if (existing) {
     if (existing.displayName.toLowerCase() !== normalizedName.toLowerCase()) {
@@ -88,6 +88,8 @@ export function addPlayer(roomId, { playerId, displayName }) {
     }
     return { ok: true, player: existing };
   }
+
+  if (room.players.length >= room.maxPlayers) return { ok: false, error: 'Room is full.' };
 
   const duplicateName = room.players.some(
     (player) => player.displayName.toLowerCase() === normalizedName.toLowerCase()
