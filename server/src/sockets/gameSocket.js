@@ -1,58 +1,226 @@
-import { addPlayer, getRoomRecord, removePlayer } from '../services/roomService.js';
-import { pickRandomLetter } from '../services/gameService.js';
+import {
+  addPlayer,
+  attachPlayer,
+  detachPlayer,
+  electNewHost,
+  findPlayer,
+  getConnectedPlayers,
+  getRoomRecord,
+  removePlayer,
+  toPublicRoom
+} from '../services/roomService.js';
+import {
+  calculateRoundResults,
+  leaderboard,
+  normalizeAnswer,
+  pickRandomLetter
+} from '../services/gameService.js';
+import { validateAllSubmissions } from '../services/validationService.js';
+
+const CATEGORIES = ['name', 'place', 'animal', 'thing'];
+
+function emitRoom(io, room, event = 'room:state') {
+  io.to(room.roomId).emit(event, toPublicRoom(room));
+}
+
+function startRound(io, room) {
+  if (room.timer) clearTimeout(room.timer);
+
+  room.currentLetter = pickRandomLetter(room.usedLetters);
+  room.usedLetters.push(room.currentLetter);
+  room.currentRound += 1;
+  room.state = 'PLAYING';
+  room.results = null;
+  room.submissions = new Map();
+  room.ending = false;
+
+  room.players.forEach((player) => {
+    player.submitted = false;
+  });
+
+  const serverNow = Date.now();
+  room.roundEndsAt = serverNow + room.roundSeconds * 1000;
+
+  io.to(room.roomId).emit('round:started', {
+    room: toPublicRoom(room),
+    letter: room.currentLetter,
+    currentRound: room.currentRound,
+    totalRounds: room.totalRounds,
+    serverNow,
+    roundEndsAt: room.roundEndsAt
+  });
+
+  room.timer = setTimeout(() => {
+    finishRound(io, room).catch((error) => {
+      console.error('Round finish error:', error);
+      room.state = 'RESULTS';
+      room.roundEndsAt = null;
+      room.ending = false;
+      io.to(room.roomId).emit('error_message', { message: 'The round ended with a server error.' });
+      emitRoom(io, room);
+    });
+  }, room.roundSeconds * 1000 + 100);
+}
+
+async function finishRound(io, room) {
+  if (!room || room.ending || room.state !== 'PLAYING') return;
+
+  room.ending = true;
+  if (room.timer) clearTimeout(room.timer);
+  room.timer = null;
+
+  const { validations, mode } = await validateAllSubmissions({
+    letter: room.currentLetter,
+    submissions: room.submissions
+  });
+
+  const roundResults = calculateRoundResults({
+    players: room.players,
+    submissions: room.submissions,
+    validations
+  });
+
+  const resultById = new Map(roundResults.map((result) => [result.playerId, result]));
+
+  room.players.forEach((player) => {
+    const result = resultById.get(player.playerId);
+    player.score = result?.totalScore ?? player.score;
+    player.submitted = true;
+  });
+
+  room.results = {
+    round: room.currentRound,
+    letter: room.currentLetter,
+    validationMode: mode,
+    players: roundResults
+  };
+
+  room.state = room.currentRound >= room.totalRounds ? 'FINISHED' : 'RESULTS';
+  room.roundEndsAt = null;
+  room.ending = false;
+
+  const payload = {
+    room: toPublicRoom(room),
+    results: room.results,
+    leaderboard: leaderboard(room.players),
+    final: room.state === 'FINISHED'
+  };
+
+  io.to(room.roomId).emit('round:ended', payload);
+  if (payload.final) io.to(room.roomId).emit('game:finished', payload);
+}
 
 export function registerSocketHandlers(io) {
   io.on('connection', (socket) => {
-    socket.on('join_room', ({ roomId, playerId, displayName }) => {
+    socket.on('room:join', ({ roomId, playerId, displayName }) => {
       const room = getRoomRecord(roomId);
-      if (!room) {
-        socket.emit('error_message', { message: 'Room not found.' });
-        return;
+      if (!room) return socket.emit('error_message', { message: 'Room not found.' });
+
+      const existing = findPlayer(room, playerId);
+      if (room.state !== 'WAITING' && !existing) {
+        return socket.emit('error_message', { message: 'This game has already started.' });
+      }
+
+      const result = existing
+        ? { ok: true, player: existing }
+        : addPlayer(room.roomId, { playerId, displayName });
+
+      if (!result.ok) return socket.emit('error_message', { message: result.error });
+
+      attachPlayer(room.roomId, result.player.playerId, socket.id);
+      socket.join(room.roomId);
+
+      socket.emit('room:joined', {
+        room: toPublicRoom(room),
+        playerId: result.player.playerId
+      });
+      emitRoom(io, room);
+    });
+
+    socket.on('room:start', ({ roomId, playerId }) => {
+      const room = getRoomRecord(roomId);
+      const host = room && findPlayer(room, playerId);
+
+      if (!room || !host || room.hostId !== playerId) {
+        return socket.emit('error_message', { message: 'Only the host can start the game.' });
+      }
+
+      const connectedPlayers = getConnectedPlayers(room);
+      if (connectedPlayers.length < 2) {
+        return socket.emit('error_message', { message: 'At least 2 connected players are required.' });
       }
 
       if (room.state !== 'WAITING') {
-        socket.emit('error_message', { message: 'Game already started.' });
-        return;
+        return socket.emit('error_message', { message: 'This game has already started.' });
       }
 
-      if (room.players.length >= room.maxPlayers) {
-        socket.emit('error_message', { message: 'Room is full.' });
-        return;
-      }
-
-      const existing = room.players.find((player) => player.playerId === playerId);
-      if (!existing) {
-        addPlayer(room.roomId, {
-          playerId,
-          displayName,
-          score: 0,
-          connected: true
-        });
-      }
-
-      socket.join(room.roomId);
-      io.to(room.roomId).emit('room_updated', getRoomRecord(room.roomId));
+      startRound(io, room);
     });
 
-    socket.on('start_game', ({ roomId, playerId }) => {
+    socket.on('round:submit', async ({ roomId, playerId, round, answers }) => {
+      const room = getRoomRecord(roomId);
+      const player = room && findPlayer(room, playerId);
+
+      if (!room || !player) return socket.emit('error_message', { message: 'Player or room not found.' });
+      if (room.state !== 'PLAYING' || round !== room.currentRound) {
+        return socket.emit('error_message', { message: 'This round is no longer accepting answers.' });
+      }
+
+      if (room.roundEndsAt && Date.now() >= room.roundEndsAt) {
+        await finishRound(io, room);
+        return;
+      }
+
+      if (room.submissions.has(playerId)) {
+        return socket.emit('error_message', { message: 'You already submitted this round.' });
+      }
+
+      const sanitized = Object.fromEntries(
+        CATEGORIES.map((category) => [category, normalizeAnswer(answers?.[category]).slice(0, 80)])
+      );
+
+      room.submissions.set(playerId, sanitized);
+      player.submitted = true;
+      socket.emit('round:submitted', { playerId });
+      emitRoom(io, room);
+
+      if (getConnectedPlayers(room).every((entry) => room.submissions.has(entry.playerId))) {
+        await finishRound(io, room);
+      }
+    });
+
+    socket.on('round:next', ({ roomId, playerId }) => {
       const room = getRoomRecord(roomId);
       if (!room || room.hostId !== playerId) return;
+      if (room.state !== 'RESULTS') {
+        return socket.emit('error_message', { message: 'The round is not ready to advance.' });
+      }
+      startRound(io, room);
+    });
 
-      room.state = 'PLAYING';
-      room.currentRound = 1;
-      const letter = pickRandomLetter(room.usedLetters);
-      room.usedLetters.push(letter);
-      room.currentLetter = letter;
+    socket.on('room:leave', ({ roomId, playerId }) => {
+      const room = getRoomRecord(roomId);
+      const player = room && findPlayer(room, playerId);
+      if (!room || !player) return;
 
-      io.to(room.roomId).emit('game_started', {
-        currentRound: room.currentRound,
-        totalRounds: room.totalRounds,
-        letter
-      });
+      if (room.state === 'WAITING') {
+        removePlayer(room.roomId, playerId);
+      } else {
+        player.connected = false;
+        player.socketId = null;
+      }
+
+      if (room.hostId === playerId) electNewHost(room);
+      socket.leave(room.roomId);
+      emitRoom(io, room);
     });
 
     socket.on('disconnect', () => {
-      // Reconnection/host transfer will be implemented in the lobby phase.
+      const match = detachPlayer(socket.id);
+      if (!match) return;
+      const { room, player } = match;
+      if (room.hostId === player.playerId) electNewHost(room);
+      emitRoom(io, room);
     });
   });
 }
