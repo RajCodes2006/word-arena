@@ -61,19 +61,52 @@ function App() {
       if (currentPlayer) setSubmitted(Boolean(currentPlayer.submitted));
       if (next.currentLetter) setLetter(next.currentLetter);
       if (next.currentRound) setRound(next.currentRound);
-      if (next.roundEndsAt) setEndsAt(next.roundEndsAt);
+      setEndsAt(next.roundEndsAt || null);
 
       if (next.state === 'WAITING') setScreen('LOBBY');
       if (next.state === 'PLAYING') setScreen('GAME');
       if (next.state === 'RESULTS') setScreen('RESULTS');
       if (next.state === 'FINISHED') setScreen('FINISHED');
     };
-    const joined = ({ room: next, playerId }) => {
-      const nextSession = { roomId: next.roomId, playerId, displayName: name.trim() || 'Player' };
+    const joined = ({
+      room: next,
+      playerId,
+      results: joinedResults,
+      leaderboard: joinedBoard,
+      round: joinedRound,
+      letter: joinedLetter,
+      roundEndsAt: joinedEndsAt,
+      serverNow
+    }) => {
+      const currentSession = sessionRef.current;
+      const nextSession = {
+        roomId: next.roomId,
+        playerId,
+        displayName: currentSession?.displayName || nameRef.current.trim() || 'Player'
+      };
+
       sessionStorage.setItem(SESSION_KEY, JSON.stringify(nextSession));
       setSession(nextSession);
       setRoom(next);
-      setScreen(next.state === 'PLAYING' ? 'GAME' : 'LOBBY');
+      setRound(joinedRound || next.currentRound || 0);
+      setLetter(joinedLetter || next.currentLetter || '');
+      setEndsAt(joinedEndsAt || next.roundEndsAt || null);
+      if (serverNow && joinedEndsAt) setOffset(serverNow - Date.now());
+      setResults(joinedResults || null);
+      setBoard(joinedBoard || []);
+      setSubmitted(Boolean(
+        next.players?.find((player) => player.playerId === playerId)?.submitted
+      ));
+      setScreen(
+        next.state === 'PLAYING'
+          ? 'GAME'
+          : next.state === 'RESULTS'
+            ? 'RESULTS'
+            : next.state === 'FINISHED'
+              ? 'FINISHED'
+              : 'LOBBY'
+      );
+      leavingRef.current = false;
       setBusy(false);
     };
     const started = ({ room: next, letter: nextLetter, currentRound, serverNow, roundEndsAt }) => {
@@ -172,6 +205,7 @@ function App() {
     try {
       const data = await createRoom({ playerName: name.trim(), ...settings });
       const next = { roomId: data.roomId, playerId: data.playerId, displayName: name.trim() };
+      leavingRef.current = false;
       sessionStorage.setItem(SESSION_KEY, JSON.stringify(next));
       setSession(next); setRoom(data.room); setRoomCode(data.roomId); setScreen('LOBBY');
       emit('room:join', next);
@@ -181,7 +215,8 @@ function App() {
   function join() {
     if (!name.trim() || !roomCode.trim()) return setNotice('Enter your name and a Room ID.');
     const next = { roomId: roomCode.trim().toUpperCase(), playerId: crypto.randomUUID(), displayName: name.trim() };
-    localStorage.setItem(SESSION_KEY, JSON.stringify(next));
+    leavingRef.current = false;
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(next));
     setSession(next); setBusy(true); setNotice(''); setScreen('LOBBY'); emit('room:join', next);
   }
 
