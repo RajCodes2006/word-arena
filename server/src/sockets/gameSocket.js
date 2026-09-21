@@ -204,6 +204,15 @@ export function registerSocketHandlers(io) {
       room.drafts.set(playerId, sanitizeAnswers(answers));
     });
 
+    socket.on('round:draft', ({ roomId, playerId, round, answers }) => {
+      const room = getRoomRecord(roomId);
+      const player = room && findPlayer(room, playerId);
+      if (!room || !player || room.state !== 'PLAYING') return;
+      if (round !== room.currentRound || room.submissions.has(playerId)) return;
+      if (room.roundEndsAt && Date.now() >= room.roundEndsAt) return;
+      room.drafts.set(playerId, sanitizeAnswers(answers));
+    });
+
     socket.on('round:submit', async ({ roomId, playerId, round, answers }) => {
       const room = getRoomRecord(roomId);
       const player = room && findPlayer(room, playerId);
@@ -231,6 +240,7 @@ export function registerSocketHandlers(io) {
       }
 
       const sanitized = sanitizeAnswers(answers);
+      room.drafts.set(playerId, sanitized);
       room.drafts.set(playerId, sanitized);
       room.submissions.set(playerId, sanitized);
       player.submitted = true;
