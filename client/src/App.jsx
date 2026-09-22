@@ -330,8 +330,12 @@ function App() {
 
   async function copyCode() {
     const code = room?.roomId || roomCode;
-    try { await navigator.clipboard.writeText(code); setNotice('Room ID copied.'); }
-    catch { setNotice('Copy failed. Select the Room ID manually.'); }
+    try {
+      await navigator.clipboard.writeText(code);
+      setNotice('');
+    } catch {
+      setNotice('Copy failed. Select the Room Code manually.');
+    }
   }
 
   if (screen === 'HOME') {
