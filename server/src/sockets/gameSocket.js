@@ -41,6 +41,10 @@ function sanitizeAnswers(answers) {
 
 function startRound(io, room) {
   if (room.timer) clearTimeout(room.timer);
+  if (room.lifecycleTimer) {
+    clearTimeout(room.lifecycleTimer);
+    room.lifecycleTimer = null;
+  }
 
   room.currentLetter = pickRandomLetter(room.usedLetters);
   room.usedLetters.push(room.currentLetter);
@@ -100,6 +104,12 @@ function startRound(io, room) {
         leaderboard: leaderboard(room.players),
         final: room.state === 'FINISHED'
       };
+
+      if (payload.final) {
+        room.lifecycleTimer = setTimeout(() => {
+          deleteRoom(room.roomId);
+        }, 30 * 60 * 1000);
+      }
 
       io.to(room.roomId).emit('error_message', {
         message: 'Validation service failed. Basic fallback scoring was used.'
@@ -165,6 +175,12 @@ async function finishRound(io, room) {
     leaderboard: leaderboard(room.players),
     final: room.state === 'FINISHED'
   };
+
+  if (payload.final) {
+    room.lifecycleTimer = setTimeout(() => {
+      deleteRoom(room.roomId);
+    }, 30 * 60 * 1000);
+  }
 
   io.to(room.roomId).emit('round:ended', payload);
   if (payload.final) io.to(room.roomId).emit('game:finished', payload);
