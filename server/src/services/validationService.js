@@ -18,21 +18,6 @@ function looksLikePlausibleName(answer) {
   return true;
 }
 
-function localFallback({ category, answer, letter }) {
-  const normalized = String(answer ?? '').trim();
-  if (!normalized) return { valid: false, reason: 'EMPTY' };
-  if (!startsWithLetter(normalized, letter)) return { valid: false, reason: 'WRONG_LETTER' };
-
-  if (category === 'name' && !looksLikePlausibleName(normalized)) {
-    return { valid: false, reason: 'NOT_A_PLAUSIBLE_NAME' };
-  }
-
-  return {
-    valid: true,
-    reason: category === 'name' ? 'BASIC_NAME_CHECK' : 'BASIC_LETTER_CHECK'
-  };
-}
-
 function normalizeValidationPayload(raw, answers, letter) {
   const output = {};
 
@@ -73,15 +58,6 @@ function extractJson(text) {
     .replace(/\s*```$/i, '');
 
   return JSON.parse(cleaned);
-}
-
-function basicChecks(answers, letter) {
-  return Object.fromEntries(
-    CATEGORIES.map((category) => [
-      category,
-      localFallback({ category, answer: answers[category], letter })
-    ])
-  );
 }
 
 function unavailableChecks(answers, letter) {
