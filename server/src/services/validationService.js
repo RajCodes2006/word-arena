@@ -84,6 +84,15 @@ function basicChecks(answers, letter) {
   );
 }
 
+export function validateBasicSubmissions({ letter, submissions }) {
+  return new Map(
+    [...submissions.entries()].map(([playerId, answers]) => [
+      playerId,
+      basicChecks(answers, letter)
+    ])
+  );
+}
+
 export async function validateSubmission({ letter, answers }) {
   const preparedAnswers = Object.fromEntries(
     CATEGORIES.map((category) => [
