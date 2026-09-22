@@ -152,7 +152,6 @@ ${JSON.stringify(preparedAnswers, null, 2)}
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
-            temperature: 0,
             maxOutputTokens: 500,
             responseMimeType: 'application/json'
           }
@@ -195,12 +194,21 @@ export async function validateAllSubmissions({ letter, submissions }) {
   const validated = await Promise.all(
     entries.map(async ([playerId, answers]) => {
       const result = await validateSubmission({ letter, answers });
-      return [playerId, result.checks];
+      return [playerId, result];
     })
   );
 
+  const modes = validated.map(([, result]) => result?.mode);
+  const hasGemini = modes.includes('gemini-api');
+  const hasFallback = modes.includes('basic-fallback');
+  const mode = !hasFallback && hasGemini
+    ? 'gemini-api'
+    : hasGemini && hasFallback
+      ? 'mixed-fallback'
+      : 'basic-fallback';
+
   return {
-    validations: new Map(validated),
-    mode: process.env.GEMINI_API_KEY ? 'gemini-api' : 'basic-fallback'
+    validations: new Map(validated.map(([playerId, result]) => [playerId, result.checks])),
+    mode
   };
 }
