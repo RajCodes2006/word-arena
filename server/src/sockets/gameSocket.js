@@ -70,13 +70,42 @@ function startRound(io, room) {
   room.timer = setTimeout(() => {
     finishRound(io, room).catch((error) => {
       console.error('Round finish error:', error);
-      room.state = 'RESULTS';
+      const safeResults = calculateRoundResults({
+        players: room.players,
+        submissions: room.submissions,
+        validations: new Map()
+      });
+
+      room.results = {
+        round: room.currentRound,
+        letter: room.currentLetter,
+        validationMode: 'basic-fallback',
+        players: safeResults
+      };
+
+      room.players.forEach((player) => {
+        const result = safeResults.find((entry) => entry.playerId === player.playerId);
+        player.score = result?.totalScore ?? player.score;
+        player.submitted = true;
+      });
+
+      room.state = room.currentRound >= room.totalRounds ? 'FINISHED' : 'RESULTS';
       room.roundEndsAt = null;
       room.ending = false;
+      room.drafts = new Map();
+
+      const payload = {
+        room: toPublicRoom(room),
+        results: room.results,
+        leaderboard: leaderboard(room.players),
+        final: room.state === 'FINISHED'
+      };
+
       io.to(room.roomId).emit('error_message', {
-        message: 'The round ended with a server error.'
+        message: 'Validation service failed. Basic fallback scoring was used.'
       });
-      emitRoom(io, room);
+      io.to(room.roomId).emit('round:ended', payload);
+      if (payload.final) io.to(room.roomId).emit('game:finished', payload);
     });
   }, room.roundSeconds * 1000 + 100);
 }
