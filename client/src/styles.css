@@ -160,3 +160,50 @@ td small { color: #52525b; margin-top: 4px; }
   .submit { align-items: stretch; flex-direction: column; }
   .submit button { width: 100%; }
 }
+
+
+.connection-badge,
+.connection-mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.connection-badge i,
+.connection-mini i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+  background: #71717a;
+}
+
+.connection-badge.connected i,
+.connection-mini.connected i {
+  background: #22c55e;
+}
+
+.connection-badge.connecting i,
+.connection-mini.connecting i {
+  background: #f59e0b;
+}
+
+.connection-badge.disconnected i,
+.connection-mini.disconnected i {
+  background: #ef4444;
+}
+
+.connection-mini {
+  justify-self: end;
+  color: #a1a1aa;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+@media (max-width: 850px) {
+  .connection-mini { display: none; }
+}
+
+@media (max-width: 560px) {
+  .connection-badge { display: none; }
+}
