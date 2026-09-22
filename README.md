@@ -7,7 +7,7 @@ Create a room, invite other players, get a random starting letter, fill all four
 ## ✨ Highlights
 
 - 🎮 **2–5 players per room**
-- 🏠 Create a private room or join with a Room ID
+- 🏠 Create a private room or join with a **4-letter word Room Code**
 - 👑 Host-controlled game start and round progression
 - 🔤 Server-generated random letters
 - ⏱️ **Server-authoritative countdown timer**
@@ -26,7 +26,7 @@ Create a room, invite other players, get a random starting letter, fill all four
 ## 🕹️ How the game works
 
 1. A player creates a room and becomes the host.
-2. Other players join using the Room ID.
+2. Other players join using the 4-letter Room Code.
 3. The host starts the game once at least **2 players are connected**.
 4. The server generates a starting letter.
 5. Players enter:
@@ -156,7 +156,7 @@ word-arena/
 │   │   ├── sockets/
 │   │   │   └── gameSocket.js     # Real-time game events
 │   │   ├── utils/
-│   │   │   └── generateRoomId.js # Room ID generation
+│   │   │   └── generateRoomId.js # Room Code generation
 │   │   └── server.js              # Server entry point
 │   ├── .env.example
 │   └── package.json
@@ -256,6 +256,10 @@ Then verify the backend health endpoint:
 /health
 ```
 
+## 🔤 Room Codes
+
+Word Arena uses short, memorable **4-letter word codes** such as `DOGS`, `CATS`, `BARK`, and `WAVE`. The server selects from a curated word bank and checks for collisions before creating a room.
+
 ## 🔄 Real-time game events
 
 The multiplayer layer uses Socket.IO for low-latency state updates.
@@ -347,7 +351,6 @@ This is an **MVP**, so it intentionally does not include:
 - Match history
 - Database-backed leaderboards
 - Spectator mode
-- Private invite links
 - Horizontal scaling across multiple backend instances
 
 The biggest architectural limitation is the in-memory game state: a backend restart ends all active rooms.
