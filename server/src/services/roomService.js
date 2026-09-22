@@ -85,6 +85,14 @@ export function addPlayer(roomId, { playerId, displayName }) {
   const existing = findPlayer(room, normalizedId);
   if (existing) {
     if (existing.displayName.toLowerCase() !== normalizedName.toLowerCase()) {
+      const duplicateName = room.players.some(
+        (player) =>
+          player.playerId !== existing.playerId &&
+          player.displayName.toLowerCase() === normalizedName.toLowerCase()
+      );
+      if (duplicateName) {
+        return { ok: false, error: 'That display name is already in use.' };
+      }
       existing.displayName = normalizedName;
     }
     return { ok: true, player: existing };
