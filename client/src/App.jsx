@@ -11,6 +11,7 @@ const CATEGORIES = [
   ['thing', 'Thing']
 ];
 const SESSION_KEY = 'wordarena.session.v2';
+const INVITE_ROOM = new URLSearchParams(window.location.search).get('room')?.trim().toUpperCase() || '';
 
 function loadSession() {
   try { return JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null'); }
@@ -24,7 +25,7 @@ function App() {
   const [screen, setScreen] = useState(saved ? 'LOBBY' : 'HOME');
   const [room, setRoom] = useState(null);
   const [name, setName] = useState(saved?.displayName || '');
-  const [roomCode, setRoomCode] = useState(saved?.roomId || '');
+  const [roomCode, setRoomCode] = useState(saved?.roomId || INVITE_ROOM);
   const [settings, setSettings] = useState({ maxPlayers: 5, rounds: 5, roundSeconds: 45 });
   const [letter, setLetter] = useState('');
   const [round, setRound] = useState(0);
@@ -301,6 +302,30 @@ function App() {
     setLetter(''); setNotice('');
   }
 
+  async function shareRoom() {
+    const code = room?.roomId || roomCode;
+    if (!code) return;
+
+    const inviteUrl = new URL(window.location.origin + '/');
+    inviteUrl.searchParams.set('room', code);
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: 'Join my Word Arena game',
+          text: 'Join my Word Arena room: ' + code,
+          url: inviteUrl.toString()
+        });
+        setNotice('Invite link shared.');
+        return;
+      }
+      await navigator.clipboard.writeText(inviteUrl.toString());
+      setNotice('Invite link copied.');
+    } catch {
+      setNotice('Sharing cancelled. The Room ID is still available to copy.');
+    }
+  }
+
   async function copyCode() {
     const code = room?.roomId || roomCode;
     try { await navigator.clipboard.writeText(code); setNotice('Room ID copied.'); }
@@ -327,7 +352,7 @@ function App() {
           </div>
           <button className="primary wide" onClick={create} disabled={busy}>{busy ? 'Creating...' : 'Create New Room'}</button>
           <div className="or">OR JOIN EXISTING</div>
-          <div className="join"><input value={roomCode} onChange={(e) => setRoomCode(e.target.value.toUpperCase())} placeholder="WW-ABCDEF" maxLength={9} /><button onClick={join}>Join</button></div>
+          <div className="join"><input value={roomCode} onChange={(e) => setRoomCode(e.target.value.toUpperCase())} placeholder="WW-ABCDEF" maxLength={9} /><button onClick={join} disabled={busy}>Join</button></div>
           {notice && <Notice text={notice} />}
         </section>
       </section>
@@ -346,20 +371,20 @@ function App() {
       <button className="leave" onClick={leave}>Leave</button>
     </header>
 
-    {screen === 'LOBBY' && <Lobby room={room} online={online} isHost={isHost} onStart={start} notice={notice} />}
+    {screen === 'LOBBY' && <Lobby room={room} online={online} isHost={isHost} onStart={start} onShare={shareRoom} notice={notice} />}
     {screen === 'GAME' && <Game room={room} letter={letter} seconds={seconds} answers={answers} updateAnswer={updateAnswer} submitted={submitted} onSubmit={submit} session={session} notice={notice} />}
     {screen === 'RESULTS' && <Results results={results} board={board} isHost={isHost} onNext={nextRound} />}
     {screen === 'FINISHED' && <Finished board={board} onNew={leave} />}
   </div>;
 }
 
-function Lobby({ room, online, isHost, onStart, notice }) {
+function Lobby({ room, online, isHost, onStart, onShare, notice }) {
   return <main className="layout"><section className="card panel">
     <div className="row between"><div><p className="eyebrow">GAME LOBBY</p><h1>Bring your squad in.</h1><p className="muted">Share the Room ID and start when everyone is connected.</p></div><div className="count"><b>{online.length}/{room?.maxPlayers}</b><small>online</small></div></div>
     <div className="players">{(room?.players || []).map(p => <div className="player" key={p.playerId}><span className="avatar">{p.displayName[0].toUpperCase()}</span><div><b>{p.displayName}</b><small>{p.playerId === room.hostId ? 'Host' : p.connected ? 'Connected' : 'Offline'}</small></div><i className={p.connected ? 'online' : ''} /></div>)}</div>
     {online.length < 2 && <div className="waiting"><i />Waiting for one more player...</div>}
     {notice && <Notice text={notice} />}
-  </section><aside className="card side"><p className="card-kicker">MATCH SETTINGS</p><Setting a="Players" b={(room?.maxPlayers || '') + ' max'} /><Setting a="Rounds" b={room?.totalRounds} /><Setting a="Round time" b={(room?.roundSeconds || '') + 's'} /><Setting a="Scoring" b="10 / 5 / 0" /><hr /><button className="primary wide" disabled={!isHost || online.length < 2} onClick={onStart}>{isHost ? 'Start Word Arena' : 'Waiting for host'}</button><p className="small muted">Minimum 2 connected players. Maximum 5.</p></aside></main>;
+  </section><aside className="card side"><p className="card-kicker">MATCH SETTINGS</p><Setting a="Players" b={(room?.maxPlayers || '') + ' max'} /><Setting a="Rounds" b={room?.totalRounds} /><Setting a="Round time" b={(room?.roundSeconds || '') + 's'} /><Setting a="Scoring" b="10 / 5 / 0" /><hr /><div className="lobby-actions"><button className="primary" disabled={!isHost || online.length < 2} onClick={onStart}>{isHost ? 'Start Word Arena' : 'Waiting for host'}</button><button onClick={onShare}>Share Invite</button></div><p className="small muted">Minimum 2 connected players. Maximum 5.</p></aside></main>;
 }
 
 function Game({ room, letter, seconds, answers, updateAnswer, submitted, onSubmit, session, notice }) {
