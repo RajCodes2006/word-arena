@@ -342,7 +342,7 @@ function App() {
           <p className="eyebrow">NAME • PLACE • ANIMAL • THING</p>
           <h1>Think fast.<br /><span>Type faster.</span></h1>
           <p>One letter. Four categories. One shot. Battle with 2–5 players in real time.</p>
-          <div className="stats"><div><b>2–5</b><span>players</span></div><div><b>45s</b><span>default round</span></div><div><b>10</b><span>unique points</span></div></div>
+          <div className="stats"><div><b>2–5</b><span>players</span></div><div><b>45s</b><span>default round</span></div><div><b>4 letters</b><span>room code</span></div><div><b>10</b><span>unique points</span></div></div>
         </div>
         <section className="card create-card">
           <p className="card-kicker">CREATE A ROOM</p>
@@ -354,6 +354,7 @@ function App() {
           </div>
           <button className="primary wide" onClick={create} disabled={busy}>{busy ? 'Creating...' : 'Create New Room'}</button>
           <div className="or">OR JOIN EXISTING</div>
+          <p className="room-hint">Use a 4-letter room word, such as <b>DOGS</b>, <b>CATS</b>, or <b>BARK</b>.</p>
           <div className="join"><input value={roomCode} onChange={(e) => setRoomCode(e.target.value.replace(/[^A-Za-z]/g, "").toUpperCase().slice(0, 4))} placeholder="DOGS" maxLength={4} inputMode="text" autoCapitalize="characters" /><button onClick={join} disabled={busy}>Join</button></div>
           {notice && <Notice text={notice} />}
         </section>
