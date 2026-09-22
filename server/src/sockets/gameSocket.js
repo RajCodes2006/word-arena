@@ -39,6 +39,76 @@ function sanitizeAnswers(answers) {
   );
 }
 
+function scheduleFinishedRoomCleanup(room) {
+  room.lifecycleTimer = setTimeout(() => {
+    deleteRoom(room.roomId);
+  }, 30 * 60 * 1000);
+  room.lifecycleTimer.unref?.();
+}
+
+function fallbackFinishRound(io, room, error) {
+  console.error('Round finish error:', error);
+
+  if (!room || room.state !== 'PLAYING') return;
+
+  const effectiveSubmissions = new Map(room.drafts);
+  for (const [playerId, answers] of room.submissions.entries()) {
+    effectiveSubmissions.set(playerId, answers);
+  }
+  room.submissions = effectiveSubmissions;
+
+  const safeResults = calculateRoundResults({
+    players: room.players,
+    submissions: room.submissions,
+    validations: new Map()
+  });
+
+  room.results = {
+    round: room.currentRound,
+    letter: room.currentLetter,
+    validationMode: 'basic-fallback',
+    players: safeResults
+  };
+
+  room.players.forEach((player) => {
+    const result = safeResults.find((entry) => entry.playerId === player.playerId);
+    player.score = result?.totalScore ?? player.score;
+    player.submitted = true;
+  });
+
+  room.state = room.currentRound >= room.totalRounds ? 'FINISHED' : 'RESULTS';
+  room.roundEndsAt = null;
+  room.ending = false;
+  room.timer = null;
+  room.drafts = new Map();
+
+  const payload = {
+    room: toPublicRoom(room),
+    results: room.results,
+    leaderboard: leaderboard(room.players),
+    final: room.state === 'FINISHED'
+  };
+
+  if (payload.final) {
+    if (room.lifecycleTimer) clearTimeout(room.lifecycleTimer);
+    scheduleFinishedRoomCleanup(room);
+  }
+
+  io.to(room.roomId).emit('error_message', {
+    message: 'Validation service failed. Basic fallback scoring was used.'
+  });
+  io.to(room.roomId).emit('round:ended', payload);
+  if (payload.final) io.to(room.roomId).emit('game:finished', payload);
+}
+
+async function finishRoundSafely(io, room) {
+  try {
+    await finishRound(io, room);
+  } catch (error) {
+    fallbackFinishRound(io, room, error);
+  }
+}
+
 function startRound(io, room) {
   if (room.timer) clearTimeout(room.timer);
   if (room.lifecycleTimer) {
@@ -72,51 +142,7 @@ function startRound(io, room) {
   });
 
   room.timer = setTimeout(() => {
-    finishRound(io, room).catch((error) => {
-      console.error('Round finish error:', error);
-      const safeResults = calculateRoundResults({
-        players: room.players,
-        submissions: room.submissions,
-        validations: new Map()
-      });
-
-      room.results = {
-        round: room.currentRound,
-        letter: room.currentLetter,
-        validationMode: 'basic-fallback',
-        players: safeResults
-      };
-
-      room.players.forEach((player) => {
-        const result = safeResults.find((entry) => entry.playerId === player.playerId);
-        player.score = result?.totalScore ?? player.score;
-        player.submitted = true;
-      });
-
-      room.state = room.currentRound >= room.totalRounds ? 'FINISHED' : 'RESULTS';
-      room.roundEndsAt = null;
-      room.ending = false;
-      room.drafts = new Map();
-
-      const payload = {
-        room: toPublicRoom(room),
-        results: room.results,
-        leaderboard: leaderboard(room.players),
-        final: room.state === 'FINISHED'
-      };
-
-      if (payload.final) {
-        room.lifecycleTimer = setTimeout(() => {
-          deleteRoom(room.roomId);
-        }, 30 * 60 * 1000);
-      }
-
-      io.to(room.roomId).emit('error_message', {
-        message: 'Validation service failed. Basic fallback scoring was used.'
-      });
-      io.to(room.roomId).emit('round:ended', payload);
-      if (payload.final) io.to(room.roomId).emit('game:finished', payload);
-    });
+    void finishRoundSafely(io, room);
   }, room.roundSeconds * 1000 + 100);
 }
 
@@ -176,12 +202,7 @@ async function finishRound(io, room) {
     final: room.state === 'FINISHED'
   };
 
-  if (payload.final) {
-    room.lifecycleTimer = setTimeout(() => {
-      deleteRoom(room.roomId);
-    }, 30 * 60 * 1000);
-    room.lifecycleTimer.unref?.();
-  }
+  if (payload.final) scheduleFinishedRoomCleanup(room);
 
   io.to(room.roomId).emit('round:ended', payload);
   if (payload.final) io.to(room.roomId).emit('game:finished', payload);
@@ -284,7 +305,7 @@ export function registerSocketHandlers(io) {
       }
 
       if (room.roundEndsAt && Date.now() >= room.roundEndsAt) {
-        await finishRound(io, room);
+        await finishRoundSafely(io, room);
         return;
       }
 
@@ -379,9 +400,7 @@ export function registerSocketHandlers(io) {
         getConnectedPlayers(room).length > 0 &&
         getConnectedPlayers(room).every((entry) => room.submissions.has(entry.playerId))
       ) {
-        finishRound(io, room).catch((error) => {
-          console.error('Round finish after disconnect failed:', error);
-        });
+        void finishRoundSafely(io, room);
       }
     });
   });
