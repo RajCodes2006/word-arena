@@ -72,7 +72,7 @@ function fallbackFinishRound(io, room, error) {
   room.results = {
     round: room.currentRound,
     letter: room.currentLetter,
-    validationMode: 'basic-fallback',
+    validationMode: 'validation-unavailable',
     players: safeResults
   };
 
@@ -101,7 +101,7 @@ function fallbackFinishRound(io, room, error) {
   }
 
   io.to(room.roomId).emit('error_message', {
-    message: 'Validation service failed. Basic fallback scoring was used.'
+    message: 'AI validation was unavailable. Unverified answers received 0 points.'
   });
   io.to(room.roomId).emit('round:ended', payload);
   if (payload.final) io.to(room.roomId).emit('game:finished', payload);
