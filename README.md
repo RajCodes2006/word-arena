@@ -1,6 +1,6 @@
-# ⚔️ WordWars
+# ⚔️ Word Arena
 
-**WordWars** is a real-time multiplayer **Name, Place, Animal, Thing** game built for fast, competitive rounds with friends.
+**Word Arena** is a real-time multiplayer **Name, Place, Animal, Thing** game built for fast, competitive rounds with friends.
 
 Create a room, invite other players, get a random starting letter, fill all four categories before the timer runs out, and let the server validate and score every answer.
 
@@ -50,7 +50,7 @@ Create a room, invite other players, get a random starting letter, fill all four
 
 ## 🤖 AI answer validation
 
-WordWars uses **Google Gemini** as a server-side judge for submitted answers.
+Word Arena uses **Google Gemini** as a server-side judge for submitted answers.
 
 The validator checks whether each answer:
 
@@ -127,7 +127,7 @@ There is also a local fallback validator, so the game can still run without a Ge
 ## 📁 Project structure
 
 ```text
-word-wars/
+word-arena/
 │
 ├── client/                         # React + Vite frontend
 │   ├── src/
@@ -170,8 +170,8 @@ word-wars/
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/RajCodes2006/word-wars.git
-cd word-wars
+git clone https://github.com/RajCodes2006/word-arena.git
+cd word-arena
 ```
 
 ### 2. Start the backend
