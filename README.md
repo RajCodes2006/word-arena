@@ -60,7 +60,7 @@ The validator checks whether each answer:
 - Is not obvious gibberish
 - Is reasonable for the category
 
-There is also a local fallback validator, so the game can still run without a Gemini API key or when the API request fails.
+There is a fail-closed safety path for Gemini outages: answers are not awarded points unless AI validation succeeds. This prevents unverified answers from being scored as valid.
 
 > **Important:** The Gemini API key stays on the backend. Never expose it through a `VITE_*` environment variable.
 
