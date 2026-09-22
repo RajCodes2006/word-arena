@@ -209,9 +209,9 @@ export function registerSocketHandlers(io) {
 
     socket.on('round:draft', ({ roomId, playerId, round, answers }) => {
       const room = getRoomRecord(roomId);
-      const player = room && findPlayer(room, playerId);
+      const player = getAuthenticatedPlayer(room, playerId, socket);
 
-      if (!room || !player || room.state !== 'PLAYING') return;
+      if (!room || !player || room.state !== 'PLAYING' || room.ending) return;
       if (round !== room.currentRound || room.submissions.has(playerId)) return;
       if (room.roundEndsAt && Date.now() >= room.roundEndsAt) return;
 
