@@ -24,6 +24,12 @@ function emitRoom(io, room, event = 'room:state') {
   io.to(room.roomId).emit(event, toPublicRoom(room));
 }
 
+function getAuthenticatedPlayer(room, playerId, socket) {
+  const player = room && findPlayer(room, playerId);
+  if (!player || !player.connected || player.socketId !== socket.id) return null;
+  return player;
+}
+
 function sanitizeAnswers(answers) {
   return Object.fromEntries(
     CATEGORIES.map((category) => [
@@ -179,7 +185,7 @@ export function registerSocketHandlers(io) {
       const room = getRoomRecord(roomId);
       const host = room && findPlayer(room, playerId);
 
-      if (!room || !host || room.hostId !== playerId) {
+      if (!room || !host || host.socketId !== socket.id || room.hostId !== playerId) {
         return socket.emit('error_message', {
           message: 'Only the host can start the game.'
         });
@@ -214,7 +220,7 @@ export function registerSocketHandlers(io) {
 
     socket.on('round:submit', async ({ roomId, playerId, round, answers }) => {
       const room = getRoomRecord(roomId);
-      const player = room && findPlayer(room, playerId);
+      const player = getAuthenticatedPlayer(room, playerId, socket);
 
       if (!room || !player) {
         return socket.emit('error_message', {
@@ -257,7 +263,7 @@ export function registerSocketHandlers(io) {
 
     socket.on('round:next', ({ roomId, playerId }) => {
       const room = getRoomRecord(roomId);
-      if (!room || room.hostId !== playerId) return;
+      if (!room || room.hostId !== playerId || !getAuthenticatedPlayer(room, playerId, socket)) return;
 
       if (room.state !== 'RESULTS') {
         return socket.emit('error_message', {
@@ -270,7 +276,7 @@ export function registerSocketHandlers(io) {
 
     socket.on('room:leave', ({ roomId, playerId }) => {
       const room = getRoomRecord(roomId);
-      const player = room && findPlayer(room, playerId);
+      const player = getAuthenticatedPlayer(room, playerId, socket);
       if (!room || !player) return;
 
       if (room.state === 'WAITING') {
@@ -282,6 +288,10 @@ export function registerSocketHandlers(io) {
           return;
         }
       } else {
+        if (!player.submitted) {
+          room.drafts.delete(playerId);
+          room.submissions.delete(playerId);
+        }
         player.connected = false;
         player.socketId = null;
       }
