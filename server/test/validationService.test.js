@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { validateUnavailableSubmissions } from '../src/services/validationService.js';
 
 test('validation unavailable rejects empty answers', () => {
-  const checks = validateBasicSubmissions({
+  const checks = validateUnavailableSubmissions({
     letter: 'A',
     submissions: new Map([
       ['p1', { name: '', place: 'Agra', animal: '', thing: '  ' }]
