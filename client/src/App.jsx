@@ -10,7 +10,7 @@ const CATEGORIES = [
   ['animal', 'Animal'],
   ['thing', 'Thing']
 ];
-const SESSION_KEY = 'wordwars.session.v2';
+const SESSION_KEY = 'wordarena.session.v2';
 
 function loadSession() {
   try { return JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null'); }
@@ -289,7 +289,7 @@ function App() {
 
   if (screen === 'HOME') {
     return <div className="home"><div className="grid-bg" /><main className="home-wrap">
-      <header className="brand"><div className="logo">WW</div><div><b>WordWars</b><span>Real-time NPAT battles</span></div><em>LIVE MULTIPLAYER</em></header>
+      <header className="brand"><div className="logo">WW</div><div><b>Word Arena</b><span>Real-time NPAT battles</span></div><em>LIVE MULTIPLAYER</em></header>
       <section className="hero">
         <div className="hero-copy">
           <p className="eyebrow">NAME • PLACE • ANIMAL • THING</p>
@@ -319,7 +319,7 @@ function App() {
 
   return <div className="app">
     <header className="topbar">
-      <button className="brand-btn" onClick={leave}><span>WW</span> WordWars</button>
+      <button className="brand-btn" onClick={leave}><span>WW</span> Word Arena</button>
       <button className="room-id" onClick={copyCode}><small>ROOM</small><b>{room?.roomId || roomCode}</b><span>Copy</span></button>
       <strong className="meta">{meta}</strong>
       <button className="leave" onClick={leave}>Leave</button>
@@ -338,7 +338,7 @@ function Lobby({ room, online, isHost, onStart, notice }) {
     <div className="players">{(room?.players || []).map(p => <div className="player" key={p.playerId}><span className="avatar">{p.displayName[0].toUpperCase()}</span><div><b>{p.displayName}</b><small>{p.playerId === room.hostId ? 'Host' : p.connected ? 'Connected' : 'Offline'}</small></div><i className={p.connected ? 'online' : ''} /></div>)}</div>
     {online.length < 2 && <div className="waiting"><i />Waiting for one more player...</div>}
     {notice && <Notice text={notice} />}
-  </section><aside className="card side"><p className="card-kicker">MATCH SETTINGS</p><Setting a="Players" b={(room?.maxPlayers || '') + ' max'} /><Setting a="Rounds" b={room?.totalRounds} /><Setting a="Round time" b={(room?.roundSeconds || '') + 's'} /><Setting a="Scoring" b="10 / 5 / 0" /><hr /><button className="primary wide" disabled={!isHost || online.length < 2} onClick={onStart}>{isHost ? 'Start WordWars' : 'Waiting for host'}</button><p className="small muted">Minimum 2 connected players. Maximum 5.</p></aside></main>;
+  </section><aside className="card side"><p className="card-kicker">MATCH SETTINGS</p><Setting a="Players" b={(room?.maxPlayers || '') + ' max'} /><Setting a="Rounds" b={room?.totalRounds} /><Setting a="Round time" b={(room?.roundSeconds || '') + 's'} /><Setting a="Scoring" b="10 / 5 / 0" /><hr /><button className="primary wide" disabled={!isHost || online.length < 2} onClick={onStart}>{isHost ? 'Start Word Arena' : 'Waiting for host'}</button><p className="small muted">Minimum 2 connected players. Maximum 5.</p></aside></main>;
 }
 
 function Game({ room, letter, seconds, answers, updateAnswer, submitted, onSubmit, session, notice }) {
@@ -359,7 +359,7 @@ function Results({ results, board, isHost, onNext }) {
 }
 
 function Finished({ board, onNew }) {
-  return <main className="finish"><section className="card champion"><p className="eyebrow">GAME COMPLETE</p><div className="crown">✦</div><small>WORDWARS CHAMPION</small><h1>{board?.[0]?.displayName || 'Winner'}</h1><strong>{board?.[0]?.score || 0}<span> pts</span></strong><button className="primary" onClick={onNew}>Start a New Room</button></section><aside className="card side final"><p className="card-kicker">FINAL STANDINGS</p>{(board || []).map(p => <div className="final-row" key={p.playerId}><span>{p.rank}</span><b>{p.displayName}</b><strong>{p.score}</strong></div>)}</aside></main>;
+  return <main className="finish"><section className="card champion"><p className="eyebrow">GAME COMPLETE</p><div className="crown">✦</div><small>WORD ARENA CHAMPION</small><h1>{board?.[0]?.displayName || 'Winner'}</h1><strong>{board?.[0]?.score || 0}<span> pts</span></strong><button className="primary" onClick={onNew}>Start a New Room</button></section><aside className="card side final"><p className="card-kicker">FINAL STANDINGS</p>{(board || []).map(p => <div className="final-row" key={p.playerId}><span>{p.rank}</span><b>{p.displayName}</b><strong>{p.score}</strong></div>)}</aside></main>;
 }
 
 function Setting({ a, b }) { return <div className="setting"><span>{a}</span><b>{b}</b></div>; }
