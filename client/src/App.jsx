@@ -412,10 +412,10 @@ function Results({ results, board, isHost, onNext }) {
   const players = results?.players || [];
   const roundPoints = players.reduce((sum, player) => sum + (player.roundScore || 0), 0);
   const validationLabel = results?.validationMode === 'gemini-api'
-    ? 'API VERIFIED'
+    ? 'AI VERIFIED'
     : results?.validationMode === 'mixed-fallback'
-      ? 'PARTIAL FALLBACK'
-      : 'BASIC FALLBACK';
+      ? 'PARTIAL AI VALIDATION'
+      : 'AI VALIDATION UNAVAILABLE';
 
   return <main className="results-layout">
     <section className="card panel results-card">
