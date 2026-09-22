@@ -35,6 +35,7 @@ export function createRoomRecord({
     players: [
       {
         playerId: hostId,
+        playerToken: crypto.randomUUID(),
         displayName: cleanName(playerName),
         score: 0,
         connected: false,
@@ -98,6 +99,7 @@ export function addPlayer(roomId, { playerId, displayName }) {
 
   const player = {
     playerId: normalizedId,
+    playerToken: crypto.randomUUID(),
     displayName: normalizedName,
     score: 0,
     connected: false,
