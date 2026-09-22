@@ -135,7 +135,7 @@ Rules:
 - Name: a plausible real human given name or commonly accepted personal name. Reject random strings, keyboard-smash text, and obvious category mismatches.
 - Place: a real geographic place, such as a city, town, country, state, landmark, river, mountain, region, etc.
 - Animal: a real animal or recognized animal species/common animal name.
-- Thing: a real, recognizable concrete object, item, product, tool, device, food item, or physical thing.
+- Thing: a real, recognizable concrete physical object or item, including products, tools, devices, toys, clothing, or prepared food items. Reject substances/materials or abstract concepts such as ice, water, air, electricity, love, money, etc. unless the answer is clearly a named object/item.
 - The answer must begin with the required letter, ignoring leading whitespace.
 - Reject gibberish, random strings, obvious category mismatches, and made-up terms.
 - Common proper nouns are allowed.
