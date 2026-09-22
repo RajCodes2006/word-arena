@@ -147,7 +147,7 @@ ${JSON.stringify(preparedAnswers, null, 2)}
 
   for (let modelIndex = 0; modelIndex < modelCandidates.length; modelIndex += 1) {
     const currentModel = modelCandidates[modelIndex];
-    const attemptsForModel = modelIndex === 0 ? 2 : 1;
+    const attemptsForModel = 1;
 
     for (let attempt = 0; attempt < attemptsForModel; attempt += 1) {
       try {
@@ -179,12 +179,8 @@ ${JSON.stringify(preparedAnswers, null, 2)}
           );
 
           const transient = response.status === 429 || response.status >= 500;
-          if (transient && attempt + 1 < attemptsForModel) {
-            await new Promise((resolve) => setTimeout(resolve, 500));
-            continue;
-          }
-
           if (transient && modelIndex + 1 < modelCandidates.length) {
+            await new Promise((resolve) => setTimeout(resolve, 500));
             console.warn(`Switching Gemini validation model from ${currentModel} to ${modelCandidates[modelIndex + 1]}.`);
             break;
           }
@@ -223,11 +219,8 @@ ${JSON.stringify(preparedAnswers, null, 2)}
         }
       } catch (error) {
         console.error(`Validation API error from ${currentModel}:`, error);
-        if (attempt + 1 < attemptsForModel) {
-          await new Promise((resolve) => setTimeout(resolve, 500));
-          continue;
-        }
         if (modelIndex + 1 < modelCandidates.length) {
+          await new Promise((resolve) => setTimeout(resolve, 500));
           console.warn(`Switching Gemini validation model from ${currentModel} to ${modelCandidates[modelIndex + 1]}.`);
           break;
         }
