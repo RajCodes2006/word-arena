@@ -55,6 +55,7 @@ export function createRoomRecord({
   room.lifecycleTimer = setTimeout(() => {
     if (room.state === 'WAITING') deleteRoom(room.roomId);
   }, ROOM_IDLE_MS);
+  room.lifecycleTimer.unref?.();
 
   rooms.set(roomId, room);
   return room;
