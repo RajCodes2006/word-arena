@@ -379,3 +379,14 @@ td small { color: #52525b; margin-top: 4px; }
 .room-hint b {
   color: #a1a1aa;
 }
+
+
+.room-id.copied {
+  border-color: #14532d;
+  background: rgba(20, 83, 45, .14);
+}
+
+.room-id.copied span {
+  color: #86efac;
+  font-weight: 800;
+}
