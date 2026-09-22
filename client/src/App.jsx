@@ -38,6 +38,7 @@ function App() {
   const [board, setBoard] = useState([]);
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState(socket.connected ? 'connected' : 'connecting');
   const timeoutDraftSent = useRef(0);
   const leavingRef = useRef(false);
@@ -333,7 +334,10 @@ function App() {
     try {
       await navigator.clipboard.writeText(code);
       setNotice('');
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
     } catch {
+      setCopied(false);
       setNotice('Copy failed. Select the Room Code manually.');
     }
   }
@@ -372,7 +376,7 @@ function App() {
   return <div className="app">
     <header className="topbar">
       <button className="brand-btn" onClick={leave}><span>WA</span> Word Arena</button>
-      <button className="room-id" onClick={copyCode} aria-label="Copy room code"><small>ROOM CODE</small><b>{room?.roomId || roomCode || "----"}</b><span>Copy</span></button>
+      <button className={`room-id ${copied ? 'copied' : ''}`} onClick={copyCode} aria-label="Copy room code"><small>ROOM CODE</small><b>{room?.roomId || roomCode || "----"}</b><span>{copied ? 'Copied ✓' : 'Copy'}</span></button>
       <strong className="meta">{meta}</strong>
       <span className={`connection-mini ${connectionStatus}`} aria-live="polite"><i />{connectionStatus === "connected" ? "Connected" : connectionStatus === "connecting" ? "Reconnecting…" : "Offline"}</span>
       <button className="leave" onClick={leave}>Leave</button>
