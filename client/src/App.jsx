@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoom } from './services/api';
 import { connectSocket } from './services/socket';
+import NotFound from './NotFound';
 import './styles.css';
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
@@ -47,6 +48,8 @@ function App() {
   const me = room?.players?.find((p) => p.playerId === session?.playerId);
   const isHost = Boolean(me && room?.hostId === me.playerId);
   const online = room?.players?.filter((p) => p.connected) || [];
+
+  if (window.location.pathname !== '/') return <NotFound />;
 
   useEffect(() => {
     const setRoomState = (next) => {
