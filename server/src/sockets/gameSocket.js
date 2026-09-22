@@ -143,13 +143,16 @@ async function finishRound(io, room) {
 
 export function registerSocketHandlers(io) {
   io.on('connection', (socket) => {
-    socket.on('room:join', ({ roomId, playerId, displayName }) => {
+    socket.on('room:join', ({ roomId, playerId, playerToken, displayName }) => {
       const room = getRoomRecord(roomId);
       if (!room) {
         return socket.emit('error_message', { message: 'Room not found.' });
       }
 
       const existing = findPlayer(room, playerId);
+      if (existing && existing.playerToken !== playerToken) {
+        return socket.emit('error_message', { message: 'Invalid player session.' });
+      }
       if (room.state !== 'WAITING' && !existing) {
         return socket.emit('error_message', {
           message: 'This game has already started.'
@@ -170,6 +173,7 @@ export function registerSocketHandlers(io) {
       socket.emit('room:joined', {
         room: toPublicRoom(room),
         playerId: result.player.playerId,
+        playerToken: result.player.playerToken,
         results: room.results,
         leaderboard: leaderboard(room.players),
         round: room.currentRound,
