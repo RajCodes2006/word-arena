@@ -221,7 +221,7 @@ export function registerSocketHandlers(io) {
           message: 'Player or room not found.'
         });
       }
-      if (room.state !== 'PLAYING' || round !== room.currentRound) {
+      if (room.state !== 'PLAYING' || round !== room.currentRound || room.ending) {
         return socket.emit('error_message', {
           message: 'This round is no longer accepting answers.'
         });
