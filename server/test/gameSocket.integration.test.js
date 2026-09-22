@@ -75,9 +75,9 @@ test('two-player game flow, scoring, auth, and host transfer work', async (t) =>
 
   const round1 = await hostEnded;
   await player2Ended;
-  assert.equal(round1.results.validationMode, 'basic-fallback');
+  assert.equal(round1.results.validationMode, 'validation-unavailable');
   assert.equal(round1.results.players.length, 2);
-  assert.deepEqual(round1.results.players.map((p) => p.roundScore).sort((a, b) => a - b), [20, 20]);
+  assert.deepEqual(round1.results.players.map((p) => p.roundScore).sort((a, b) => a - b), [0, 0]);
   assert.equal(round1.results.players[0].breakdown.name.duplicate, true);
 
   const hostTransferPromise = waitForEvent(player2, 'room:state');
