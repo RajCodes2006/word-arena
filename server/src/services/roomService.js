@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import { generateRoomId } from '../utils/generateRoomId.js';
 
 const rooms = new Map();
+const ROOM_IDLE_MS = 30 * 60 * 1000;
 
 function clamp(value, min, max) {
   return Math.min(Math.max(Number(value) || min, min), max);
@@ -47,8 +48,13 @@ export function createRoomRecord({
     drafts: new Map(),
     results: null,
     timer: null,
+    lifecycleTimer: null,
     ending: false
   };
+
+  room.lifecycleTimer = setTimeout(() => {
+    if (room.state === 'WAITING') deleteRoom(room.roomId);
+  }, ROOM_IDLE_MS);
 
   rooms.set(roomId, room);
   return room;
@@ -153,6 +159,7 @@ export function deleteRoom(roomId) {
   if (!room) return false;
 
   if (room.timer) clearTimeout(room.timer);
+  if (room.lifecycleTimer) clearTimeout(room.lifecycleTimer);
   return rooms.delete(room.roomId);
 }
 
