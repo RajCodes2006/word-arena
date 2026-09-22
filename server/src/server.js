@@ -27,7 +27,7 @@ app.get('/health', (_req, res) => {
   res.json({
     status: 'ok',
     app: 'Word Arena',
-    validation: process.env.GEMINI_API_KEY ? 'gemini-api' : 'basic-fallback'
+    validation: process.env.GEMINI_API_KEY ? 'gemini-api' : 'validation-unavailable'
   });
 });
 
