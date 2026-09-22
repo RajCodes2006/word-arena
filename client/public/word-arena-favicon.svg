@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Word Arena minimalist favicon -->
+  <rect width="512" height="512" rx="88" fill="#06245A"/>
+
+  <!-- Crown -->
+  <path
+    d="M148 184
+       L112 118
+       L196 151
+       L256 78
+       L316 151
+       L400 118
+       L364 184
+       Q256 219 148 184 Z"
+    fill="#FFC62E"/>
+
+  <!-- W -->
+  <path
+    d="M72 202
+       H150
+       L183 342
+       L256 231
+       L329 342
+       L362 202
+       H440
+       L394 404
+       H324
+       L256 307
+       L188 404
+       H118
+       Z"
+    fill="#FFC62E"/>
+</svg>
