@@ -26,7 +26,7 @@ app.use(express.json({ limit: '32kb' }));
 app.get('/health', (_req, res) => {
   res.json({
     status: 'ok',
-    app: 'WordWars',
+    app: 'Word Arena',
     validation: process.env.GEMINI_API_KEY ? 'gemini-api' : 'basic-fallback'
   });
 });
@@ -37,5 +37,5 @@ const io = new Server(server, { cors: corsOptions });
 registerSocketHandlers(io);
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`WordWars server listening on port ${PORT}`);
+  console.log(`Word Arena server listening on port ${PORT}`);
 });
