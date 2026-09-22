@@ -27,7 +27,7 @@ export function calculateRoundResults({ players, submissions, validations }) {
     for (const category of ['name', 'place', 'animal', 'thing']) {
       const answer = normalizeAnswer(submission[category]);
       if (answer && validation[category]?.valid) {
-        const key = answer.toLocaleLowerCase();
+        const key = `${category}:${answer.toLocaleLowerCase()}`;
         duplicateCounts.set(key, (duplicateCounts.get(key) || 0) + 1);
       }
     }
@@ -45,7 +45,7 @@ export function calculateRoundResults({ players, submissions, validations }) {
       const duplicate = Boolean(
         answer &&
         check.valid &&
-        duplicateCounts.get(answer.toLocaleLowerCase()) > 1
+        duplicateCounts.get(`${category}:${answer.toLocaleLowerCase()}`) > 1
       );
 
       const score = check.valid ? (duplicate ? 5 : 10) : 0;
