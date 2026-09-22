@@ -18,7 +18,7 @@ import {
 } from '../services/gameService.js';
 import {
   validateAllSubmissions,
-  validateBasicSubmissions
+  validateUnavailableSubmissions
 } from '../services/validationService.js';
 
 const CATEGORIES = ['name', 'place', 'animal', 'thing'];
@@ -63,7 +63,7 @@ function fallbackFinishRound(io, room, error) {
   const safeResults = calculateRoundResults({
     players: room.players,
     submissions: room.submissions,
-    validations: validateBasicSubmissions({
+    validations: validateUnavailableSubmissions({
       letter: room.currentLetter,
       submissions: room.submissions
     })
