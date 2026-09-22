@@ -328,7 +328,7 @@ export function registerSocketHandlers(io) {
           room.submissions.has(entry.playerId)
         )
       ) {
-        await finishRound(io, room);
+        await finishRoundSafely(io, room);
       }
     });
 
