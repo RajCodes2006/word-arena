@@ -180,6 +180,7 @@ async function finishRound(io, room) {
     room.lifecycleTimer = setTimeout(() => {
       deleteRoom(room.roomId);
     }, 30 * 60 * 1000);
+    room.lifecycleTimer.unref?.();
   }
 
   io.to(room.roomId).emit('round:ended', payload);
