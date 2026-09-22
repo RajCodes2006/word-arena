@@ -276,6 +276,7 @@ function App() {
   }
 
   function leave() {
+    leavingRef.current = true;
     if (session) emit('room:leave', { roomId: session.roomId, playerId: session.playerId });
     sessionStorage.removeItem(SESSION_KEY);
     sessionRef.current = null;
