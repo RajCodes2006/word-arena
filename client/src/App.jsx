@@ -73,6 +73,7 @@ function App() {
     const joined = ({
       room: next,
       playerId,
+      playerToken,
       results: joinedResults,
       leaderboard: joinedBoard,
       round: joinedRound,
@@ -85,6 +86,7 @@ function App() {
       const nextSession = {
         roomId: next.roomId,
         playerId,
+        playerToken,
         displayName: currentSession?.displayName || nameRef.current.trim() || 'Player'
       };
 
@@ -226,7 +228,7 @@ function App() {
     setBusy(true); setNotice('');
     try {
       const data = await createRoom({ playerName: name.trim(), ...settings });
-      const next = { roomId: data.roomId, playerId: data.playerId, displayName: name.trim() };
+      const next = { roomId: data.roomId, playerId: data.playerId, playerToken: data.playerToken, displayName: name.trim() };
       leavingRef.current = false;
       sessionRef.current = next;
       sessionStorage.setItem(SESSION_KEY, JSON.stringify(next));
@@ -237,7 +239,7 @@ function App() {
 
   function join() {
     if (!name.trim() || !roomCode.trim()) return setNotice('Enter your name and a Room ID.');
-    const next = { roomId: roomCode.trim().toUpperCase(), playerId: crypto.randomUUID(), displayName: name.trim() };
+    const next = { roomId: roomCode.trim().toUpperCase(), playerId: crypto.randomUUID(), playerToken: null, displayName: name.trim() };
     leavingRef.current = false;
     sessionRef.current = next;
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(next));
