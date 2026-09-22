@@ -16,7 +16,10 @@ import {
   normalizeAnswer,
   pickRandomLetter
 } from '../services/gameService.js';
-import { validateAllSubmissions } from '../services/validationService.js';
+import {
+  validateAllSubmissions,
+  validateBasicSubmissions
+} from '../services/validationService.js';
 
 const CATEGORIES = ['name', 'place', 'animal', 'thing'];
 
@@ -60,7 +63,10 @@ function fallbackFinishRound(io, room, error) {
   const safeResults = calculateRoundResults({
     players: room.players,
     submissions: room.submissions,
-    validations: new Map()
+    validations: validateBasicSubmissions({
+      letter: room.currentLetter,
+      submissions: room.submissions
+    })
   });
 
   room.results = {
