@@ -37,6 +37,7 @@ function App() {
   const [board, setBoard] = useState([]);
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState(socket.connected ? 'connected' : 'connecting');
   const timeoutDraftSent = useRef(0);
   const leavingRef = useRef(false);
   const sessionRef = useRef(session);
@@ -168,9 +169,21 @@ function App() {
       socket.emit('room:join', current);
     };
 
-    socket.on('connect', rejoin);
+    const handleConnect = () => {
+      setConnectionStatus('connected');
+      rejoin();
+    };
+    const handleDisconnect = () => setConnectionStatus('disconnected');
+    const handleConnectError = () => setConnectionStatus('disconnected');
+    const handleReconnectAttempt = () => setConnectionStatus('connecting');
+
+    socket.on('connect', handleConnect);
+    socket.on('disconnect', handleDisconnect);
+    socket.on('connect_error', handleConnectError);
+    socket.io.on('reconnect_attempt', handleReconnectAttempt);
 
     if (saved?.roomId && saved?.playerId && socket.connected) {
+      setConnectionStatus('connected');
       rejoin();
     }
 
@@ -182,7 +195,10 @@ function App() {
       socket.off('round:ended', ended);
       socket.off('game:finished', ended);
       socket.off('error_message', error);
-      socket.off('connect', rejoin);
+      socket.off('connect', handleConnect);
+      socket.off('disconnect', handleDisconnect);
+      socket.off('connect_error', handleConnectError);
+      socket.io.off('reconnect_attempt', handleReconnectAttempt);
     };
   }, [socket, saved]);
 
@@ -293,7 +309,7 @@ function App() {
 
   if (screen === 'HOME') {
     return <div className="home"><div className="grid-bg" /><main className="home-wrap">
-      <header className="brand"><div className="logo">WW</div><div><b>Word Arena</b><span>Real-time NPAT battles</span></div><em>LIVE MULTIPLAYER</em></header>
+      <header className="brand"><div className="logo">WW</div><div><b>Word Arena</b><span>Real-time NPAT battles</span></div><em className={`connection-badge ${connectionStatus}`}><i />{connectionStatus === "connected" ? "LIVE MULTIPLAYER" : connectionStatus === "connecting" ? "RECONNECTING" : "OFFLINE"}</em></header>
       <section className="hero">
         <div className="hero-copy">
           <p className="eyebrow">NAME • PLACE • ANIMAL • THING</p>
@@ -326,6 +342,7 @@ function App() {
       <button className="brand-btn" onClick={leave}><span>WW</span> Word Arena</button>
       <button className="room-id" onClick={copyCode}><small>ROOM</small><b>{room?.roomId || roomCode}</b><span>Copy</span></button>
       <strong className="meta">{meta}</strong>
+      <span className={`connection-mini ${connectionStatus}`} aria-live="polite"><i />{connectionStatus === "connected" ? "Connected" : connectionStatus === "connecting" ? "Reconnecting…" : "Offline"}</span>
       <button className="leave" onClick={leave}>Leave</button>
     </header>
 
