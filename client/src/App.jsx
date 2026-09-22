@@ -11,7 +11,7 @@ const CATEGORIES = [
   ['thing', 'Thing']
 ];
 const SESSION_KEY = 'wordarena.session.v2';
-const INVITE_ROOM = new URLSearchParams(window.location.search).get('room')?.trim().toUpperCase() || '';
+const INVITE_ROOM = new URLSearchParams(window.location.search).get('room')?.replace(/[^A-Za-z]/g, '').toUpperCase().slice(0, 4) || '';
 
 function loadSession() {
   try { return JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null'); }
@@ -255,8 +255,10 @@ function App() {
   }
 
   function join() {
-    if (!name.trim() || !roomCode.trim()) return setNotice('Enter your name and a Room ID.');
-    const next = { roomId: roomCode.trim().toUpperCase(), playerId: crypto.randomUUID(), playerToken: null, displayName: name.trim() };
+    const code = roomCode.trim().toUpperCase();
+    if (!name.trim() || !code) return setNotice('Enter your name and a Room Code.');
+    if (!/^[A-Z]{4}$/.test(code)) return setNotice('Room codes are 4-letter words, like DOGS or CATS.');
+    const next = { roomId: code, playerId: crypto.randomUUID(), playerToken: null, displayName: name.trim() };
     leavingRef.current = false;
     sessionRef.current = next;
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(next));
@@ -352,7 +354,7 @@ function App() {
           </div>
           <button className="primary wide" onClick={create} disabled={busy}>{busy ? 'Creating...' : 'Create New Room'}</button>
           <div className="or">OR JOIN EXISTING</div>
-          <div className="join"><input value={roomCode} onChange={(e) => setRoomCode(e.target.value.toUpperCase())} placeholder="WW-ABCDEF" maxLength={9} /><button onClick={join} disabled={busy}>Join</button></div>
+          <div className="join"><input value={roomCode} onChange={(e) => setRoomCode(e.target.value.replace(/[^A-Za-z]/g, "").toUpperCase().slice(0, 4))} placeholder="DOGS" maxLength={4} inputMode="text" autoCapitalize="characters" /><button onClick={join} disabled={busy}>Join</button></div>
           {notice && <Notice text={notice} />}
         </section>
       </section>
@@ -365,7 +367,7 @@ function App() {
   return <div className="app">
     <header className="topbar">
       <button className="brand-btn" onClick={leave}><span>WW</span> Word Arena</button>
-      <button className="room-id" onClick={copyCode}><small>ROOM</small><b>{room?.roomId || roomCode}</b><span>Copy</span></button>
+      <button className="room-id" onClick={copyCode} aria-label="Copy room code"><small>ROOM CODE</small><b>{room?.roomId || roomCode || "----"}</b><span>Copy</span></button>
       <strong className="meta">{meta}</strong>
       <span className={`connection-mini ${connectionStatus}`} aria-live="polite"><i />{connectionStatus === "connected" ? "Connected" : connectionStatus === "connecting" ? "Reconnecting…" : "Offline"}</span>
       <button className="leave" onClick={leave}>Leave</button>
@@ -398,10 +400,43 @@ function Game({ room, letter, seconds, answers, updateAnswer, submitted, onSubmi
 }
 
 function Results({ results, board, isHost, onNext }) {
-  return <main className="results-layout"><section className="card panel"><div className="row between"><div><p className="eyebrow">ROUND COMPLETE</p><h1>Letter <span>{results?.letter || '?'}</span> is done.</h1></div><b className="verified">{results?.validationMode === 'gemini-api' ? 'API VERIFIED' : results?.validationMode === 'mixed-fallback' ? 'PARTIAL FALLBACK' : 'BASIC FALLBACK'}</b></div>
-    <div className="table-wrap"><table><thead><tr><th>PLAYER</th>{CATEGORIES.map(([, label]) => <th key={label}>{label}</th>)}<th>ROUND</th></tr></thead><tbody>{(results?.players || []).map(p => <tr key={p.playerId}><td><b>{p.displayName}</b></td>{CATEGORIES.map(([key]) => { const x = p.breakdown?.[key]; return <td key={key}><strong className={x?.valid ? 'valid' : 'invalid'}>{x?.answer || '—'}</strong><small>{x?.valid ? (x.duplicate ? 'duplicate · +5' : 'valid · +10') : 'invalid · +0'}</small></td>; })}<td><b>{p.roundScore}</b></td></tr>)}</tbody></table></div>
-    {isHost && <div className="submit"><p className="small muted">Host controls the next round.</p><button className="primary" onClick={onNext}>Next Round →</button></div>}
-  </section><aside className="card side"><p className="card-kicker">LEADERBOARD</p>{(board || []).map(p => <div className="score" key={p.playerId}><span>{p.rank}</span><b>{p.displayName}</b><strong>{p.score}</strong></div>)}</aside></main>;
+  const players = results?.players || [];
+  const roundPoints = players.reduce((sum, player) => sum + (player.roundScore || 0), 0);
+  const validationLabel = results?.validationMode === 'gemini-api'
+    ? 'API VERIFIED'
+    : results?.validationMode === 'mixed-fallback'
+      ? 'PARTIAL FALLBACK'
+      : 'BASIC FALLBACK';
+
+  return <main className="results-layout">
+    <section className="card panel results-card">
+      <div className="results-heading">
+        <div>
+          <p className="eyebrow">ROUND COMPLETE</p>
+          <h1>Round <span>{results?.round || '?'}</span> is done.</h1>
+          <p className="results-subtitle">Letter <b>{results?.letter || '?'}</b> · Review every answer and score.</p>
+        </div>
+        <b className="verified">{validationLabel}</b>
+      </div>
+
+      <div className="result-stats">
+        <div><small>PLAYERS</small><strong>{players.length}</strong></div>
+        <div><small>ROUND POINTS</small><strong>{roundPoints}</strong></div>
+        <div><small>SCORING</small><strong>10 / 5 / 0</strong></div>
+      </div>
+
+      <div className="table-wrap"><table><thead><tr><th>PLAYER</th>{CATEGORIES.map(([, label]) => <th key={label}>{label}</th>)}<th>ROUND</th></tr></thead><tbody>{players.map(p => <tr key={p.playerId}><td><b>{p.displayName}</b></td>{CATEGORIES.map(([key]) => { const x = p.breakdown?.[key]; return <td key={key}><strong className={x?.valid ? 'valid' : 'invalid'}>{x?.answer || '—'}</strong><small>{x?.valid ? (x.duplicate ? 'duplicate · +5' : 'valid · +10') : 'invalid · +0'}</small></td>; })}<td><b>{p.roundScore}</b></td></tr>)}</tbody></table></div>
+
+      {isHost
+        ? <div className="submit results-actions"><p className="small muted">Ready for the next round?</p><button className="primary" onClick={onNext}>Next Round →</button></div>
+        : <div className="results-wait"><span />Waiting for the host to start the next round.</div>}
+    </section>
+
+    <aside className="card side leaderboard-card">
+      <div className="row between"><p className="card-kicker">LEADERBOARD</p><small className="live-label">LIVE</small></div>
+      {(board || []).map(p => <div className="score" key={p.playerId}><span>{p.rank}</span><b>{p.displayName}</b><strong>{p.score}</strong></div>)}
+    </aside>
+  </main>;
 }
 
 function Finished({ board, onNew }) {
