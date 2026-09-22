@@ -366,3 +366,16 @@ td small { color: #52525b; margin-top: 4px; }
     align-items: stretch;
   }
 }
+
+
+.room-hint {
+  margin: -8px 0 -2px;
+  color: #52525b;
+  font-size: 11px;
+  text-align: center;
+  line-height: 1.5;
+}
+
+.room-hint b {
+  color: #a1a1aa;
+}
