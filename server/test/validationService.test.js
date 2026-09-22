@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { validateUnavailableSubmissions } from '../src/services/validationService.js';
+import {
+  validateSubmission,
+  validateUnavailableSubmissions
+} from '../src/services/validationService.js';
 
 test('validation unavailable rejects empty answers', () => {
   const checks = validateUnavailableSubmissions({
@@ -36,4 +39,95 @@ test('validation unavailable never marks non-empty answers as valid', () => {
   assert.equal(checks.get('p1').animal.valid, false);
   assert.equal(checks.get('p1').thing.valid, false);
   assert.equal(checks.get('p1').place.reason, 'AI_VALIDATION_UNAVAILABLE');
+});
+
+
+test('Gemini response is used per category and server constraints are enforced', async () => {
+  const previousKey = process.env.GEMINI_API_KEY;
+  const previousFetch = global.fetch;
+
+  process.env.GEMINI_API_KEY = 'test-key';
+  global.fetch = async () => ({
+    ok: true,
+    status: 200,
+    async json() {
+      return {
+        candidates: [{
+          content: {
+            parts: [{
+              text: JSON.stringify({
+                results: {
+                  name: { valid: true, reason: 'real name' },
+                  place: { valid: true, reason: 'real place' },
+                  animal: { valid: true, reason: 'real animal' },
+                  thing: { valid: false, reason: 'not a concrete thing' }
+                }
+              })
+            }]
+          }
+        }]
+      };
+    }
+  });
+
+  try {
+    const result = await validateSubmission({
+      letter: 'I',
+      answers: {
+        name: 'Ishita',
+        place: 'India',
+        animal: 'Iguana',
+        thing: 'Ice'
+      }
+    });
+
+    assert.equal(result.mode, 'gemini-api');
+    assert.equal(result.checks.name.valid, true);
+    assert.equal(result.checks.place.valid, true);
+    assert.equal(result.checks.animal.valid, true);
+    assert.equal(result.checks.thing.valid, false);
+  } finally {
+    if (previousKey === undefined) delete process.env.GEMINI_API_KEY;
+    else process.env.GEMINI_API_KEY = previousKey;
+    global.fetch = previousFetch;
+  }
+});
+
+test('Gemini outage fails closed after retries', async () => {
+  const previousKey = process.env.GEMINI_API_KEY;
+  const previousFetch = global.fetch;
+
+  process.env.GEMINI_API_KEY = 'test-key';
+  let calls = 0;
+  global.fetch = async () => {
+    calls += 1;
+    return {
+      ok: false,
+      status: 503,
+      async text() { return '{}'; }
+    };
+  };
+
+  try {
+    const result = await validateSubmission({
+      letter: 'A',
+      answers: {
+        name: 'Aman',
+        place: 'Agra',
+        animal: 'Ant',
+        thing: 'Apple'
+      }
+    });
+
+    assert.equal(result.mode, 'validation-unavailable');
+    assert.equal(calls, 3);
+    assert.equal(result.checks.name.valid, false);
+    assert.equal(result.checks.place.valid, false);
+    assert.equal(result.checks.animal.valid, false);
+    assert.equal(result.checks.thing.valid, false);
+  } finally {
+    if (previousKey === undefined) delete process.env.GEMINI_API_KEY;
+    else process.env.GEMINI_API_KEY = previousKey;
+    global.fetch = previousFetch;
+  }
 });
