@@ -146,7 +146,7 @@ function App() {
       setNotice(message || 'Something went wrong.');
       setBusy(false);
 
-      if (sessionRef.current?.roomId && message === 'Room not found.') {
+      if (sessionRef.current?.roomId && ['Room not found.', 'Invalid player session.'].includes(message)) {
         sessionStorage.removeItem(SESSION_KEY);
         setSession(null);
         setRoom(null);
