@@ -15,7 +15,7 @@ function cleanName(value) {
 function scheduleWaitingRoomExpiry(room) {
   if (room.lifecycleTimer) clearTimeout(room.lifecycleTimer);
 
-scheduleWaitingRoomExpiry(room);
+  scheduleWaitingRoomExpiry(room);
 }
 
 export function refreshRoomLifecycle(room) {
