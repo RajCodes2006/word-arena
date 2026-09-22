@@ -1,5 +1,5 @@
 {
-  "name": "wordwars-client",
+  "name": "word-arena-client",
   "private": true,
   "version": "0.1.0",
   "type": "module",
