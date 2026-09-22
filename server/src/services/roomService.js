@@ -15,7 +15,10 @@ function cleanName(value) {
 function scheduleWaitingRoomExpiry(room) {
   if (room.lifecycleTimer) clearTimeout(room.lifecycleTimer);
 
-  scheduleWaitingRoomExpiry(room);
+  room.lifecycleTimer = setTimeout(() => {
+    if (room.state === 'WAITING') deleteRoom(room.roomId);
+  }, ROOM_IDLE_MS);
+  room.lifecycleTimer.unref?.();
 }
 
 export function refreshRoomLifecycle(room) {
@@ -63,11 +66,7 @@ export function createRoomRecord({
     ending: false
   };
 
-  room.lifecycleTimer = setTimeout(() => {
-    if (room.state === 'WAITING') deleteRoom(room.roomId);
-  }, ROOM_IDLE_MS);
-  room.lifecycleTimer.unref?.();
-
+  scheduleWaitingRoomExpiry(room);
   rooms.set(roomId, room);
   return room;
 }
