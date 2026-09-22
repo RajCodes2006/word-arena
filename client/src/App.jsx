@@ -327,7 +327,7 @@ function App() {
           </div>
           <button className="primary wide" onClick={create} disabled={busy}>{busy ? 'Creating...' : 'Create New Room'}</button>
           <div className="or">OR JOIN EXISTING</div>
-          <div className="join"><input value={roomCode} onChange={(e) => setRoomCode(e.target.value.toUpperCase())} placeholder="WW-ABCD" maxLength={7} /><button onClick={join}>Join</button></div>
+          <div className="join"><input value={roomCode} onChange={(e) => setRoomCode(e.target.value.toUpperCase())} placeholder="WW-ABCDEF" maxLength={9} /><button onClick={join}>Join</button></div>
           {notice && <Notice text={notice} />}
         </section>
       </section>
