@@ -24,7 +24,7 @@ test('room HTTP API creates rooms and never exposes player tokens', async (t) =>
   });
   assert.equal(createdResponse.status, 201);
   const created = await createdResponse.json();
-  assert.match(created.roomId, /^WW-[A-Z0-9]{4}$/);
+  assert.match(created.roomId, /^WW-[A-Z0-9]{6}$/);
   assert.ok(created.playerId);
   assert.ok(created.playerToken);
   assert.equal(created.room.players[0].playerToken, undefined);
