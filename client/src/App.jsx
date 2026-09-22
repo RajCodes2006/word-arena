@@ -336,7 +336,7 @@ function App() {
 
   if (screen === 'HOME') {
     return <div className="home"><div className="grid-bg" /><main className="home-wrap">
-      <header className="brand"><div className="logo">WW</div><div><b>Word Arena</b><span>Real-time NPAT battles</span></div><em className={`connection-badge ${connectionStatus}`}><i />{connectionStatus === "connected" ? "LIVE MULTIPLAYER" : connectionStatus === "connecting" ? "RECONNECTING" : "OFFLINE"}</em></header>
+      <header className="brand"><div className="logo">WA</div><div><b>Word Arena</b><span>Real-time NPAT battles</span></div><em className={`connection-badge ${connectionStatus}`}><i />{connectionStatus === "connected" ? "LIVE MULTIPLAYER" : connectionStatus === "connecting" ? "RECONNECTING" : "OFFLINE"}</em></header>
       <section className="hero">
         <div className="hero-copy">
           <p className="eyebrow">NAME • PLACE • ANIMAL • THING</p>
@@ -366,7 +366,7 @@ function App() {
 
   return <div className="app">
     <header className="topbar">
-      <button className="brand-btn" onClick={leave}><span>WW</span> Word Arena</button>
+      <button className="brand-btn" onClick={leave}><span>WA</span> Word Arena</button>
       <button className="room-id" onClick={copyCode} aria-label="Copy room code"><small>ROOM CODE</small><b>{room?.roomId || roomCode || "----"}</b><span>Copy</span></button>
       <strong className="meta">{meta}</strong>
       <span className={`connection-mini ${connectionStatus}`} aria-live="polite"><i />{connectionStatus === "connected" ? "Connected" : connectionStatus === "connecting" ? "Reconnecting…" : "Offline"}</span>
