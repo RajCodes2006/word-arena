@@ -240,9 +240,6 @@ ${JSON.stringify(preparedAnswers, null, 2)}
   };
 }
 
-}
-}
-
 export async function validateAllSubmissions({ letter, submissions }) {
   const entries = [...submissions.entries()];
   const validated = await Promise.all(
