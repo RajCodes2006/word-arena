@@ -20,9 +20,9 @@ test('validation unavailable never marks non-empty answers as valid', () => {
   const submissions = new Map([
     ['p1', {
       name: 'Aman',
-      place: 'TotallyNotAPlace',
-      animal: 'NotAnAnimal',
-      thing: 'NotAThing'
+      place: 'AlienPlace',
+      animal: 'AntyThing',
+      thing: 'AppleThing'
     }]
   ]);
 
