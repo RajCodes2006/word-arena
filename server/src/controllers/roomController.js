@@ -9,7 +9,13 @@ export function createRoom(req, res) {
   if (name.length > 24) return res.status(400).json({ error: 'Name must be 24 characters or fewer.' });
 
   const room = createRoomRecord({ playerName: name, maxPlayers, rounds, roundSeconds });
-  return res.status(201).json({ roomId: room.roomId, playerId: room.hostId, room: toPublicRoom(room) });
+  const host = room.players.find((player) => player.playerId === room.hostId);
+  return res.status(201).json({
+    roomId: room.roomId,
+    playerId: room.hostId,
+    playerToken: host?.playerToken,
+    room: toPublicRoom(room)
+  });
 }
 
 export function getRoom(req, res) {
