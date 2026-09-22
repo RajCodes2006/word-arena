@@ -84,11 +84,24 @@ function basicChecks(answers, letter) {
   );
 }
 
-export function validateBasicSubmissions({ letter, submissions }) {
+function unavailableChecks(answers, letter) {
+  return Object.fromEntries(
+    CATEGORIES.map((category) => {
+      const normalized = String(answers?.[category] ?? '').trim();
+      if (!normalized) return [category, { valid: false, reason: 'EMPTY' }];
+      if (!startsWithLetter(normalized, letter)) {
+        return [category, { valid: false, reason: 'WRONG_LETTER' }];
+      }
+      return [category, { valid: false, reason: 'AI_VALIDATION_UNAVAILABLE' }];
+    })
+  );
+}
+
+export function validateUnavailableSubmissions({ letter, submissions }) {
   return new Map(
     [...submissions.entries()].map(([playerId, answers]) => [
       playerId,
-      basicChecks(answers, letter)
+      unavailableChecks(answers, letter)
     ])
   );
 }
@@ -106,8 +119,8 @@ export async function validateSubmission({ letter, answers }) {
 
   if (!apiKey) {
     return {
-      mode: 'basic-fallback',
-      checks: basicChecks(preparedAnswers, letter)
+      mode: 'validation-unavailable',
+      checks: unavailableChecks(preparedAnswers, letter)
     };
   }
 
@@ -144,58 +157,90 @@ Answers:
 ${JSON.stringify(preparedAnswers, null, 2)}
 `.trim();
 
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
-    let response;
+  const requestBody = {
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: {
+      maxOutputTokens: 500,
+      responseMimeType: 'application/json',
+      thinkingConfig: { thinkingLevel: 'low' }
+    }
+  };
 
+  for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
-      response = await fetch(
-      `${GEMINI_API_URL}/${encodeURIComponent(model)}:generateContent`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': apiKey
-        },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            maxOutputTokens: 500,
-            responseMimeType: 'application/json'
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+      let response;
+
+      try {
+        response = await fetch(
+          `${GEMINI_API_URL}/${encodeURIComponent(model)}:generateContent`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-goog-api-key': apiKey
+            },
+            body: JSON.stringify(requestBody),
+            signal: controller.signal
           }
-        }),
-        signal: controller.signal
+        );
+      } finally {
+        clearTimeout(timeout);
       }
-      );
-    } finally {
-      clearTimeout(timeout);
+
+      if (!response.ok) {
+        const details = await response.text().catch(() => '');
+        console.error(
+          `Gemini validation failed (${response.status}), attempt ${attempt + 1}: ${details}`
+        );
+
+        if ((response.status === 429 || response.status >= 500) && attempt < 2) {
+          await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
+          continue;
+        }
+
+        return {
+          mode: 'validation-unavailable',
+          checks: unavailableChecks(preparedAnswers, letter)
+        };
+      }
+
+      const payload = await response.json();
+      const text =
+        payload?.candidates?.[0]?.content?.parts
+          ?.map((part) => part.text || '')
+          .join('') || '';
+
+      return {
+        mode: 'gemini-api',
+        checks: normalizeValidationPayload(
+          extractJson(text),
+          preparedAnswers,
+          letter
+        )
+      };
+    } catch (error) {
+      console.error('Validation API error:', error);
+      if (attempt < 2) {
+        await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
+        continue;
+      }
+
+      return {
+        mode: 'validation-unavailable',
+        checks: unavailableChecks(preparedAnswers, letter)
+      };
     }
-
-    if (!response.ok) {
-      const details = await response.text().catch(() => '');
-      console.error(`Gemini validation failed (${response.status}): ${details}`);
-      return { mode: 'basic-fallback', checks: basicChecks(preparedAnswers, letter) };
-    }
-
-    const payload = await response.json();
-    const text =
-      payload?.candidates?.[0]?.content?.parts
-        ?.map((part) => part.text || '')
-        .join('') || '';
-
-    return {
-      mode: 'gemini-api',
-      checks: normalizeValidationPayload(
-        extractJson(text),
-        preparedAnswers,
-        letter
-      )
-    };
-  } catch (error) {
-    console.error('Validation API error:', error);
-    return { mode: 'basic-fallback', checks: basicChecks(preparedAnswers, letter) };
   }
+
+  return {
+    mode: 'validation-unavailable',
+    checks: unavailableChecks(preparedAnswers, letter)
+  };
+}
+
+}
 }
 
 export async function validateAllSubmissions({ letter, submissions }) {
@@ -209,12 +254,12 @@ export async function validateAllSubmissions({ letter, submissions }) {
 
   const modes = validated.map(([, result]) => result?.mode);
   const hasGemini = modes.includes('gemini-api');
-  const hasFallback = modes.includes('basic-fallback');
-  const mode = !hasFallback && hasGemini
-    ? 'gemini-api'
-    : hasGemini && hasFallback
-      ? 'mixed-fallback'
-      : 'basic-fallback';
+  const hasUnavailable = modes.includes('validation-unavailable');
+  const mode = hasGemini && hasUnavailable
+    ? 'mixed-fallback'
+    : hasGemini
+      ? 'gemini-api'
+      : 'validation-unavailable';
 
   return {
     validations: new Map(validated.map(([playerId, result]) => [playerId, result.checks])),
