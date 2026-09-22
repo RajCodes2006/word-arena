@@ -207,3 +207,14 @@ td small { color: #52525b; margin-top: 4px; }
 @media (max-width: 560px) {
   .connection-badge { display: none; }
 }
+
+
+.lobby-actions {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+@media (max-width: 560px) {
+  .lobby-actions { grid-template-columns: 1fr; }
+}
