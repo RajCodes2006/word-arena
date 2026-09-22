@@ -92,6 +92,7 @@ export async function validateSubmission({ letter, answers }) {
 
   const apiKey = process.env.GEMINI_API_KEY;
   const model = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
+  const fallbackModel = process.env.GEMINI_FALLBACK_MODEL || 'gemini-3.7-flash';
 
   if (!apiKey) {
     return {
@@ -142,71 +143,95 @@ ${JSON.stringify(preparedAnswers, null, 2)}
     }
   };
 
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 5000);
-      let response;
+  const modelCandidates = [...new Set([model, fallbackModel])];
 
+  for (let modelIndex = 0; modelIndex < modelCandidates.length; modelIndex += 1) {
+    const currentModel = modelCandidates[modelIndex];
+    const attemptsForModel = modelIndex === 0 ? 2 : 1;
+
+    for (let attempt = 0; attempt < attemptsForModel; attempt += 1) {
       try {
-        response = await fetch(
-          `${GEMINI_API_URL}/${encodeURIComponent(model)}:generateContent`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-goog-api-key': apiKey
-            },
-            body: JSON.stringify(requestBody),
-            signal: controller.signal
-          }
-        );
-      } finally {
-        clearTimeout(timeout);
-      }
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+        let response;
 
-      if (!response.ok) {
-        const details = await response.text().catch(() => '');
-        console.error(
-          `Gemini validation failed (${response.status}), attempt ${attempt + 1}: ${details}`
-        );
-
-        if ((response.status === 429 || response.status >= 500) && attempt < 2) {
-          await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
-          continue;
+        try {
+          response = await fetch(
+            `${GEMINI_API_URL}/${encodeURIComponent(currentModel)}:generateContent`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-goog-api-key': apiKey
+              },
+              body: JSON.stringify(requestBody),
+              signal: controller.signal
+            }
+          );
+        } finally {
+          clearTimeout(timeout);
         }
 
-        return {
-          mode: 'validation-unavailable',
-          checks: unavailableChecks(preparedAnswers, letter)
-        };
+        if (!response.ok) {
+          const details = await response.text().catch(() => '');
+          console.error(
+            `Gemini validation failed for ${currentModel} (${response.status}), attempt ${attempt + 1}: ${details}`
+          );
+
+          const transient = response.status === 429 || response.status >= 500;
+          if (transient && attempt + 1 < attemptsForModel) {
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            continue;
+          }
+
+          if (transient && modelIndex + 1 < modelCandidates.length) {
+            console.warn(`Switching Gemini validation model from ${currentModel} to ${modelCandidates[modelIndex + 1]}.`);
+            break;
+          }
+
+          return {
+            mode: 'validation-unavailable',
+            checks: unavailableChecks(preparedAnswers, letter)
+          };
+        }
+
+        const payload = await response.json();
+        const text =
+          payload?.candidates?.[0]?.content?.parts
+            ?.map((part) => part.text || '')
+            .join('') || '';
+
+        try {
+          return {
+            mode: 'gemini-api',
+            checks: normalizeValidationPayload(
+              extractJson(text),
+              preparedAnswers,
+              letter
+            )
+          };
+        } catch (parseError) {
+          console.error(`Gemini validation response could not be parsed for ${currentModel}:`, parseError);
+          if (modelIndex + 1 < modelCandidates.length) {
+            console.warn(`Switching Gemini validation model from ${currentModel} to ${modelCandidates[modelIndex + 1]}.`);
+            break;
+          }
+          return {
+            mode: 'validation-unavailable',
+            checks: unavailableChecks(preparedAnswers, letter)
+          };
+        }
+      } catch (error) {
+        console.error(`Validation API error from ${currentModel}:`, error);
+        if (attempt + 1 < attemptsForModel) {
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          continue;
+        }
+        if (modelIndex + 1 < modelCandidates.length) {
+          console.warn(`Switching Gemini validation model from ${currentModel} to ${modelCandidates[modelIndex + 1]}.`);
+          break;
+        }
       }
-
-      const payload = await response.json();
-      const text =
-        payload?.candidates?.[0]?.content?.parts
-          ?.map((part) => part.text || '')
-          .join('') || '';
-
-      return {
-        mode: 'gemini-api',
-        checks: normalizeValidationPayload(
-          extractJson(text),
-          preparedAnswers,
-          letter
-        )
-      };
-    } catch (error) {
-      console.error('Validation API error:', error);
-      if (attempt < 2) {
-        await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
-        continue;
-      }
-
-      return {
-        mode: 'validation-unavailable',
-        checks: unavailableChecks(preparedAnswers, letter)
-      };
     }
   }
 
