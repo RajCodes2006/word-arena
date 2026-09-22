@@ -12,6 +12,17 @@ function cleanName(value) {
   return String(value ?? '').trim().replace(/\s+/g, ' ').slice(0, 24);
 }
 
+function scheduleWaitingRoomExpiry(room) {
+  if (room.lifecycleTimer) clearTimeout(room.lifecycleTimer);
+
+scheduleWaitingRoomExpiry(room);
+}
+
+export function refreshRoomLifecycle(room) {
+  if (!room) return;
+  if (room.state === 'WAITING') scheduleWaitingRoomExpiry(room);
+}
+
 export function createRoomRecord({
   playerName,
   maxPlayers = 5,
@@ -91,6 +102,7 @@ export function addPlayer(roomId, { playerId, displayName }) {
   // A reconnecting player is allowed back even when the room is currently full.
   const existing = findPlayer(room, normalizedId);
   if (existing) {
+    if (room.state === 'WAITING') refreshRoomLifecycle(room);
     if (existing.displayName.toLowerCase() !== normalizedName.toLowerCase()) {
       const duplicateName = room.players.some(
         (player) =>
@@ -123,6 +135,7 @@ export function addPlayer(roomId, { playerId, displayName }) {
   };
 
   room.players.push(player);
+  if (room.state === 'WAITING') refreshRoomLifecycle(room);
   return { ok: true, player };
 }
 
